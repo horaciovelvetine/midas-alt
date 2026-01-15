@@ -93,36 +93,26 @@ The application will:
 MIDAS follows a clean, modular architecture with clear separation of concerns:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         CLI Layer                           │
-│  (menus, handlers, display utilities)                       │
-├─────────────────────────────────────────────────────────────┤
-│                      Service Layer                          │
-│  ┌─────────────────┐  ┌─────────────────┐                   │
-│  │   Simulation    │  │   Prediction    │                   │
-│  │    Engine       │  │    Pipeline     │                   │
-│  └────────┬────────┘  └────────┬────────┘                   │
-│           │                    │                            │
-│  ┌────────▼────────────────────▼────────┐                   │
-│  │          Configuration               │                   │
-│  │    (Settings, Reference Data)        │                   │
-│  └────────────────┬─────────────────────┘                   │
-├───────────────────┼─────────────────────────────────────────┤
-│                   ▼                                         │
-│              Domain Layer                                   │
-│  (Entities: Installation, Facility, System)                 │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│                  CLI Layer                   │
+│  (menus, handlers, display utilities)        │
+├──────────────────────────────────────────────┤
+│                Service Layer                 │
+│  ┌─────────────────┐  ┌─────────────────┐    │
+│  │   Simulation    │  │   Prediction    │    │
+│  │    Engine       │  │    Pipeline     │    │
+│  └────────┬────────┘  └────────┬────────┘    │
+│           │                    │             │
+│  ┌────────▼────────────────────▼────────┐    │
+│  │          Configuration               │    │
+│  │    (Settings, Reference Data)        │    │
+│  └────────────────┬─────────────────────┘    │
+├───────────────────┼──────────────────────────┤
+│                   ▼                          │
+│              Domain Layer                    │
+│  (Entities: Installation, Facility, System)  │
+└──────────────────────────────────────────────┘
 ```
-
-### Key Design Principles
-
-1. **Dependency Injection**: Services receive settings via constructor injection
-2. **Immutable Configuration**: `MIDASSettings` is created once at startup and passed to services
-3. **Pure Domain Entities**: Dataclasses with no business logic (computation handled by services)
-4. **Builder Pattern**: Menu construction uses fluent builder interface
-5. **Strategy Pattern**: Multiple exporters/formatters share common interfaces
-
----
 
 ## Domain Model
 

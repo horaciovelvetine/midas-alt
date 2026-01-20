@@ -12,7 +12,6 @@ from uuid import uuid4
 
 from ..config.settings import MIDASSettings
 from ..domain import DependencyChain, DependencyTier, Facility, Installation, System, UFCGrade
-from .distributions import ProbabilityDistribution, ProbabilitySegment
 
 
 class DegradationPattern(Enum):

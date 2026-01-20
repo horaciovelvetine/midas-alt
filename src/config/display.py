@@ -9,7 +9,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from .settings import MIDASSettings, SimulationDistributions
+from .settings import MIDASSettings
 
 
 def create_facility_types_table(settings: MIDASSettings) -> Table:

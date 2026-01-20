@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from pandas import DataFrame, ExcelFile
+from pandas import ExcelFile
 
 from .reference_data import FacilityType, SystemType
 from .settings import (

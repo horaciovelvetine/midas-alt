@@ -8,7 +8,6 @@ from datetime import datetime
 
 import pandas as pd
 
-from ..config.reference_data import FacilityType, SystemType
 from ..config.settings import MIDASSettings
 from ..domain import EntityType, Facility, System
 

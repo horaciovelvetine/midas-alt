@@ -4,9 +4,7 @@ import json
 from pathlib import Path
 
 from ....domain import Facility, Installation, System
-from ..config import ExportConfig
 from ..enums import OutputLayout
-from ..transformers import DataTransformer
 from .base import BaseFormatter
 
 

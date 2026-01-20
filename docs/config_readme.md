@@ -6,64 +6,64 @@ The `config` module provides centralized configuration management for the MIDAS 
 
 ### Degradation Settings (`DegradationSettings`)
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `condition_index_degraded_threshold` | float | 25.0 | CI value below which an entity is considered degraded |
-| `resiliency_grade_threshold` | int | 70 | Percentage threshold for calculating resiliency grades |
-| `initial_condition_index` | float | 99.99 | Assumed initial CI for all new entities |
-| `max_historical_years` | int | 10 | Maximum years of historical data to consider |
+| Setting                              | Type  | Default | Description                                            |
+|--------------------------------------|-------|---------|--------------------------------------------------------|
+| `condition_index_degraded_threshold` | float | 25.0    | CI value below which an entity is considered degraded  |
+| `resiliency_grade_threshold`         | int   | 70      | Percentage threshold for calculating resiliency grades |
+| `initial_condition_index`            | float | 99.99   | Assumed initial CI for all new entities                |
+| `max_time_series_years`              | int   | 10      | Maximum years of time series history to include        |
 
 ### Simulation Settings (`SimulationSettings`)
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `facilities_per_installation` | tuple[int, int] | (8, 14) | Min/max facilities to generate per installation |
-| `dependency_chain_group_range` | tuple[int, int] | (1, 3) | Range for dependency chain group IDs |
-| `maximum_system_age` | int | 80 | Maximum age (years) for simulated systems |
-| `maximum_facility_age` | int | 80 | Maximum age (years) for simulated facilities |
-| `facility_condition_randomly_degrades_chance` | int | 35 | Percentage chance of random condition degradation |
+| Setting                                       | Type            | Default | Description                                       |
+|-----------------------------------------------|-----------------|---------|---------------------------------------------------|
+| `facilities_per_installation`                 | tuple[int, int] | (8, 14) | Min/max facilities to generate per installation   |
+| `dependency_chain_group_range`                | tuple[int, int] | (1, 3)  | Range for dependency chain group IDs              |
+| `maximum_system_age`                          | int             | 80      | Maximum age (years) for simulated systems         |
+| `maximum_facility_age`                        | int             | 80      | Maximum age (years) for simulated facilities      |
+| `facility_condition_randomly_degrades_chance` | int             | 35      | Percentage chance of random condition degradation |
 
 ### Output Settings (`OutputSettings`)
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `json_indent` | int | 2 | Indentation level for JSON output |
-| `excel_sheet_main` | str | "Main Data" | Name of main Excel sheet |
-| `excel_sheet_facility_ts` | str | "Facility Time Series" | Facility time series sheet name |
-| `excel_sheet_system_ts` | str | "System Time Series" | System time series sheet name |
-| `excel_sheet_metadata` | str | "_metadata" | Metadata sheet name |
-| `metadata_file_suffix` | str | "_metadata.json" | Suffix for metadata files |
-| `csv_table_separator` | str | "_" | Separator for CSV table names |
+| Setting                   | Type | Default                | Description                       |
+|---------------------------|------|------------------------|-----------------------------------|
+| `json_indent`             | int  | 2                      | Indentation level for JSON output |
+| `excel_sheet_main`        | str  | "Main Data"            | Name of main Excel sheet          |
+| `excel_sheet_facility_ts` | str  | "Facility Time Series" | Facility time series sheet name   |
+| `excel_sheet_system_ts`   | str  | "System Time Series"   | System time series sheet name     |
+| `excel_sheet_metadata`    | str  | "_metadata"            | Metadata sheet name               |
+| `metadata_file_suffix`    | str  | "_metadata.json"       | Suffix for metadata files         |
+| `csv_table_separator`     | str  | "_"                    | Separator for CSV table names     |
 
 ### Simulation Distributions (`SimulationDistributions`)
 
 Probability distributions control random value generation:
 
-| Distribution | Default Segments | Description |
-|-------------|------------------|-------------|
-| `condition_index` | 7% → 1-50, 88% → 50-85, 5% → 85-100 | Distribution for simulated CI values |
-| `age` | 10% → 0-9, 20% → 10-20, 50% → 20-40, 20% → 41-80 | Distribution for simulated ages |
-| `grade` | 52% → G1, 32% → G2, 12% → G3, 4% → G4 | Distribution for UFC resiliency grades |
+| Distribution      | Default Segments                                 | Description                            |
+|-------------------|--------------------------------------------------|----------------------------------------|
+| `condition_index` | 7% → 1-50, 88% → 50-85, 5% → 85-100              | Distribution for simulated CI values   |
+| `age`             | 10% → 0-9, 20% → 10-20, 50% → 20-40, 20% → 41-80 | Distribution for simulated ages        |
+| `grade`           | 52% → G1, 32% → G2, 12% → G3, 4% → G4            | Distribution for UFC resiliency grades |
 
 ### Reference Data Types
 
 #### Facility Types (from Excel "Facilities" sheet)
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `key` | int | Unique identifier |
-| `title` | str | Human-readable name |
-| `life_expectancy` | int | Expected lifespan in years |
-| `mission_criticality` | int | Importance rating (1-5) |
+| Field                 | Type | Description                |
+|-----------------------|------|----------------------------|
+| `key`                 | int  | Unique identifier          |
+| `title`               | str  | Human-readable name        |
+| `life_expectancy`     | int  | Expected lifespan in years |
+| `mission_criticality` | int  | Importance rating (1-5)    |
 
 #### System Types (from Excel "Systems" sheet)
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `key` | int | Unique identifier |
-| `title` | str | Human-readable name |
-| `life_expectancy` | int | Expected lifespan in years |
-| `facility_keys` | tuple[int, ...] | Valid facility type keys this system can belong to |
+| Field             | Type            | Description                                        |
+|-------------------|-----------------|----------------------------------------------------|
+| `key`             | int             | Unique identifier                                  |
+| `title`           | str             | Human-readable name                                |
+| `life_expectancy` | int             | Expected lifespan in years                         |
+| `facility_keys`   | tuple[int, ...] | Valid facility type keys this system can belong to |
 
 ## Configuration Loading Process
 

@@ -20,7 +20,7 @@ class DegradationSettings:
     condition_index_degraded_threshold: float = 25.0
     resiliency_grade_threshold: int = 70
     initial_condition_index: float = 99.99
-    max_historical_years: int = 10
+    max_time_series_years: int = 10
 
 
 @dataclass(frozen=True)

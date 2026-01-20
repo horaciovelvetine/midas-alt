@@ -276,7 +276,7 @@ class DataTransformer:
             time_series = self._calculate_historical_ci(
                 current_ci=facility.condition_index,
                 year_constructed=facility.year_constructed,
-                initial_ci=99.99,
+                initial_ci=self.settings.degradation.initial_condition_index,
             )
 
             for months_ago, ci_value, date_str in time_series:
@@ -320,7 +320,7 @@ class DataTransformer:
             time_series = self._calculate_historical_ci(
                 current_ci=system.condition_index,
                 year_constructed=system.year_constructed,
-                initial_ci=99.99,
+                initial_ci=self.settings.degradation.initial_condition_index,
             )
 
             for months_ago, ci_value, date_str in time_series:
@@ -407,7 +407,7 @@ class DataTransformer:
     def _get_sample_points(self, age_months: int) -> list[int]:
         """Get sample points for time series generation.
 
-        Uses adaptive sampling:
+        Uses adaptive sampling limited by max_time_series_years setting:
         - Monthly for months 0-24 (recent data more important)
         - Quarterly for months 24-120 (2-10 years)
         - Yearly for older data
@@ -418,26 +418,30 @@ class DataTransformer:
         Returns:
             List of months_ago values to sample.
         """
+        # Limit to max_time_series_years from settings
+        max_months = self.settings.degradation.max_time_series_years * 12
+        effective_age = min(age_months, max_months)
+        
         points = []
         
         # Current month (months_ago = 0)
         points.append(0)
         
         # Monthly for first 24 months
-        for m in range(1, min(25, age_months + 1)):
+        for m in range(1, min(25, effective_age + 1)):
             points.append(m)
         
         # Quarterly from 24-120 months (2-10 years)
-        for m in range(27, min(121, age_months + 1), 3):
+        for m in range(27, min(121, effective_age + 1), 3):
             points.append(m)
         
-        # Yearly beyond 10 years
-        for m in range(132, age_months + 1, 12):
+        # Yearly beyond 10 years (if max allows)
+        for m in range(132, effective_age + 1, 12):
             points.append(m)
         
-        # Always include the construction date
-        if age_months not in points:
-            points.append(age_months)
+        # Always include the oldest point within the limit
+        if effective_age not in points and effective_age > 0:
+            points.append(effective_age)
         
         return sorted(set(points))
 
@@ -451,12 +455,13 @@ class DataTransformer:
 
         Args:
             current_ci: Current condition index.
-            age_months: Age in months.
+            age_months: Age in months (will be limited by max_time_series_years).
             current_date: Current datetime.
 
         Returns:
             List of (months_ago, condition_index, date_string) tuples.
         """
+        # _get_sample_points already limits to max_time_series_years
         sample_points = self._get_sample_points(age_months)
         time_series = []
         

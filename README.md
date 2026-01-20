@@ -586,30 +586,6 @@ class JSONFormatter(BaseFormatter): ...
 class ExcelFormatter(BaseFormatter): ...
 ```
 
-### Type Aliases
-
-Common type aliases for clarity:
-
-```python
-# Any entity that can have CI predicted
-PredictableEntity = Facility | System
-```
-
-### Error Handling
-
-Configuration errors are captured in `LoadResult`:
-
-```python
-state = ApplicationState.initialize()
-if not state.initialized_successfully:
-    for error in state.load_result.errors:
-        print(f"Error: {error}")
-    for warning in state.load_result.warnings:
-        print(f"Warning: {warning}")
-```
-
----
-
 ## Project Structure
 
 ```
@@ -719,7 +695,6 @@ The project uses `pyproject.toml` for all configuration:
 
 - **Ruff**: Linting rules (pycodestyle, pyflakes, isort, etc.)
 - **Pytest**: Test configuration with coverage
-- **Dependencies**: Both runtime and development dependencies
 
 ---
 

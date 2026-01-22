@@ -74,9 +74,7 @@ class ExcelFormatter(BaseFormatter):
                 if not meta_df.empty:
                     meta_df.to_excel(writer, sheet_name="_metadata", index=False)
 
-        # Also write separate metadata file
-        if metadata and self.config.generate_metadata:
-            self._write_metadata(metadata)
+        # Note: No separate metadata file for Excel - metadata is included as a sheet
 
         return self.config.file_path
 
@@ -111,8 +109,6 @@ class ExcelFormatter(BaseFormatter):
                 if not meta_df.empty:
                     meta_df.to_excel(writer, sheet_name="_metadata", index=False)
 
-        # Also write separate metadata file
-        if metadata and self.config.generate_metadata:
-            self._write_metadata(metadata)
+        # Note: No separate metadata file for Excel - metadata is included as a sheet
 
         return self.config.file_path

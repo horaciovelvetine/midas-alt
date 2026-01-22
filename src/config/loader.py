@@ -24,6 +24,41 @@ from .settings import (
 logger = logging.getLogger(__name__)
 
 
+def _find_column(columns: list[str], candidates: list[str]) -> str | None:
+    """Find a column name from a list of possible candidates.
+    
+    Performs case-insensitive matching and handles whitespace variations.
+    
+    Args:
+        columns: Available column names in the DataFrame.
+        candidates: List of possible column names to look for (in order of preference).
+        
+    Returns:
+        The matching column name from columns, or None if not found.
+    """
+    # Normalize column names for comparison
+    normalized_columns = {col.lower().replace(" ", "").replace("_", ""): col for col in columns}
+    
+    for candidate in candidates:
+        normalized_candidate = candidate.lower().replace(" ", "").replace("_", "")
+        if normalized_candidate in normalized_columns:
+            return normalized_columns[normalized_candidate]
+    
+    return None
+
+
+def _is_numeric(value: str) -> bool:
+    """Check if a string can be converted to a number.
+    
+    Handles integers, floats, and numbers with leading/trailing whitespace.
+    """
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
+
 class ConfigLoadError(Exception):
     """Raised when configuration loading fails."""
 
@@ -110,6 +145,19 @@ def _load_system_types(excel_file: ExcelFile) -> dict[int, SystemType]:
 
     df = pd.read_excel(excel_file, sheet_name="Systems")
     system_types = {}
+    
+    # Find the facility keys column (handle various naming conventions)
+    facility_keys_column = _find_column(
+        df.columns,
+        ["Facility Key(s)", "Facility Keys", "FacilityKeys", "Facility_Keys", "facility_keys"]
+    )
+    
+    if not facility_keys_column:
+        logger.warning(
+            f"No 'Facility Key(s)' column found in Systems sheet. "
+            f"Available columns: {list(df.columns)}. "
+            f"System types will have empty facility_keys."
+        )
 
     for _, row in df.iterrows():
         try:
@@ -118,17 +166,17 @@ def _load_system_types(excel_file: ExcelFile) -> dict[int, SystemType]:
                 continue
 
             # Parse facility keys (comma-separated or single value)
-            facility_keys_raw = row.get("Facility Key(s)", "")
+            facility_keys_raw = row.get(facility_keys_column, "") if facility_keys_column else ""
             if pd.isna(facility_keys_raw):
                 facility_keys = ()
             elif isinstance(facility_keys_raw, (int, float)):
                 facility_keys = (int(facility_keys_raw),)
             else:
-                # Parse comma-separated string
+                # Parse comma-separated string (handle both int and float formats)
                 facility_keys = tuple(
-                    int(k.strip())
+                    int(float(k.strip()))
                     for k in str(facility_keys_raw).split(",")
-                    if k.strip().isdigit()
+                    if k.strip() and _is_numeric(k.strip())
                 )
 
             system_type = SystemType(

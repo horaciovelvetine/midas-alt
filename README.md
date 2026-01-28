@@ -4,7 +4,6 @@ MIDAS (**M**ission **I**nfrastructure **D**egradation **A**nalysis **S**ystem) i
 
 ## Table of Contents
 
-- [Features](#features)
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
 - [Architecture Overview](#architecture-overview)
@@ -17,17 +16,6 @@ MIDAS (**M**ission **I**nfrastructure **D**egradation **A**nalysis **S**ystem) i
 - [Project Structure](#project-structure)
 - [Development Workflow](#development-workflow)
 - [Examples](#examples)
-
----
-
-## Features
-
-- **Data Simulation**: Generate realistic infrastructure data with configurable probability distributions
-- **Hierarchical Domain Model**: Installation → Facility → System hierarchy with dependency chains
-- **ML Prediction Pipeline**: Train models to predict infrastructure degradation timing
-- **Multiple Export Formats**: CSV, JSON, and Excel with normalized or denormalized layouts
-- **Interactive CLI**: Rich-powered menu system with navigation and configuration management
-- **Configurable Settings**: Excel-based configuration for facility types, system types, and distributions
 
 ---
 

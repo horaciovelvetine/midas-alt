@@ -7,5 +7,3 @@
   - There is no weighting in these calculations - just pure mean. With a `Facility.mission_criticality` in the `Installation` calculation there is the opportunity to use these as a weighting on the calculation. 
 
   - The value of the simulated condition indeces is not in any way correlated to the    life_expectancy or age. It seems easy to assume that if a bit of infra is older it would be more likely to not have a pristine index value, but this is not represented in the provided axiom.
-
-- [``] 

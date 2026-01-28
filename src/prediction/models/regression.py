@@ -120,12 +120,12 @@ class SklearnRegressionModel(DegradationModel):
                 .astype(int)
             )
 
-        # Fill missing values
-        X_features = X_features.fillna(0).infer_objects(copy=False)
-
-        # Convert any remaining object columns to numeric
+        # Convert any remaining object columns to numeric first
         for col in X_features.select_dtypes(include=["object"]).columns:
-            X_features[col] = pd.to_numeric(X_features[col], errors="coerce").fillna(0)
+            X_features[col] = pd.to_numeric(X_features[col], errors="coerce")
+
+        # Fill missing values (after type conversion to avoid FutureWarning)
+        X_features = X_features.fillna(0)
 
         return X_features
 

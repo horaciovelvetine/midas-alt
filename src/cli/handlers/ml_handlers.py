@@ -3,6 +3,7 @@
 import logging
 from pathlib import Path
 
+import pandas as pd
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -356,7 +357,7 @@ def handle_train_and_compare_models() -> None:
     # Train and evaluate models
     console.print("[bold]Training models...[/bold]\n")
     
-    evaluator = ModelEvaluator(test_size=0.2, random_state=42)
+    evaluator = ModelEvaluator(models=models)
     
     with Progress(
         SpinnerColumn(),
@@ -365,7 +366,7 @@ def handle_train_and_compare_models() -> None:
     ) as progress:
         task = progress.add_task("Evaluating models...", total=len(models))
         
-        results_df = evaluator.compare_models(models, X, y)
+        results_df = evaluator.evaluate_all(X, y, test_size=0.2)
         
         progress.update(task, completed=len(models))
     
@@ -448,7 +449,7 @@ def handle_make_predictions() -> None:
     entity_count = InputHelper.ask_number(
         "Number of entities to predict",
         min_value=1,
-        max_value=20,
+        max_value=1000,
         default=5,
         allow_back=True,
     )
@@ -476,11 +477,20 @@ def handle_make_predictions() -> None:
     
     console.print("[dim]Model trained. Generating predictions...[/dim]\n")
     
-    # Generate entities and predict
-    installation, facilities, systems = generator.generate_installation()
+    # Generate enough installations to have at least entity_count facilities
+    # Each installation has ~8-14 facilities, so estimate how many we need
+    estimated_facilities_per_installation = 10
+    num_installations = max(1, (entity_count + estimated_facilities_per_installation - 1) // estimated_facilities_per_installation)
+    
+    all_facilities = []
+    for _ in range(num_installations):
+        _, facilities, _ = generator.generate_installation()
+        all_facilities.extend(facilities)
+        if len(all_facilities) >= entity_count:
+            break
     
     # Use first N facilities
-    entities = facilities[:entity_count]
+    entities = all_facilities[:entity_count]
     
     # Create predictions table
     table = Table(
@@ -499,7 +509,7 @@ def handle_make_predictions() -> None:
     for entity in entities:
         # Extract features
         features = extractor.extract_facility_features(entity)
-        feature_df = extractor.features_to_dataframe([features])
+        feature_df = pd.DataFrame([features.to_dict()])
         
         # Make prediction with uncertainty
         predictions = model.predict_with_uncertainty(feature_df, confidence=0.8)
@@ -512,13 +522,13 @@ def handle_make_predictions() -> None:
         age_years = (entity.age_years or 0)
         
         # Format prediction
-        months = pred.value
+        months = pred.months_to_degradation
         years = months / 12
         pred_str = f"{years:.1f} years ({months:.0f} mo)"
         
         # Format confidence interval
-        low_years = pred.lower_bound / 12 if pred.lower_bound else 0
-        high_years = pred.upper_bound / 12 if pred.upper_bound else 0
+        low_years = pred.confidence_low / 12 if pred.confidence_low else 0
+        high_years = pred.confidence_high / 12 if pred.confidence_high else 0
         conf_str = f"{low_years:.1f} - {high_years:.1f} years"
         
         # Determine status

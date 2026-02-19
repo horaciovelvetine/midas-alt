@@ -1,7 +1,10 @@
  
 # Install (run these in terminal, not in Python): 
 # pip install openmeteo-requests 
-# pip install requests-cache retry-requests numpy pandas 
+# pip install requests-cache retry-requests numpy pandas  
+# "https://open-meteo.com/
+# "https://open-meteo.com/en/docs?hourly=temperature_2m,relative_humidity_2m,dew_point_2m,precipitation,surface_pressure,cloud_cover,wind_gusts_10m,visibility,rain,snowfall,showers&daily=uv_index_max,weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,showers_sum,rain_sum,cloud_cover_mean,surface_pressure_max,surface_pressure_min,wind_speed_10m_mean,wind_gusts_10m_mean,winddirection_10m_dominant,wind_direction_10m_dominant,relative_humidity_2m_max,relative_humidity_2m_min,shortwave_radiation_sum,dew_point_2m_mean,dew_point_2m_max,dew_point_2m_min&temperature_unit=fahrenheit&timezone=America%2FNew_York&latitude=30.1555&longitude=-95.5938&current=pressure_msl,surface_pressure
+# "https://www.khanacademy.org/computing/tesda-computational-thinking/xed777e2cccd04061:introduction/xed777e2cccd04061:arithmetic-expressions/a/python-style-guide
  
 import openmeteo_requests 
 import pandas as pd 
@@ -30,7 +33,7 @@ params = {
        "wind_speed_10m_mean", "wind_gusts_10m_mean", 
        "winddirection_10m_dominant", "wind_direction_10m_dominant", 
        "relative_humidity_2m_max", "relative_humidity_2m_min", 
-       "shortwave_radiation_sum" 
+       "shortwave_radiation_sum", "dew_point_2m_mean", "dew_point_2m_max", "dew_point_2m_min",
    ], 
    "hourly": [ 
        "temperature_2m", "relative_humidity_2m", "dew_point_2m", 
@@ -100,7 +103,7 @@ daily_variables = [
    "wind_speed_10m_mean", "wind_gusts_10m_mean", 
    "winddirection_10m_dominant", "wind_direction_10m_dominant", 
    "relative_humidity_2m_max", "relative_humidity_2m_min", 
-   "shortwave_radiation_sum" 
+   "shortwave_radiation_sum, daily_dew_point_2m_mean, daily_dew_point_2m_max, daily_dew_point_2m_min
 ] 
  
 for i, var in enumerate(daily_variables): 

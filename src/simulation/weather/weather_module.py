@@ -103,7 +103,7 @@ daily_variables = [
    "wind_speed_10m_mean", "wind_gusts_10m_mean", 
    "winddirection_10m_dominant", "wind_direction_10m_dominant", 
    "relative_humidity_2m_max", "relative_humidity_2m_min", 
-   "shortwave_radiation_sum, daily_dew_point_2m_mean, daily_dew_point_2m_max, daily_dew_point_2m_min
+   "shortwave_radiation_sum", "dew_point_2m_mean", "dew_point_2m_max", "dew_point_2m_min"
 ] 
  
 for i, var in enumerate(daily_variables): 
@@ -117,6 +117,6 @@ print(daily_df)
 
 for i, var in enumerate(daily_variables): daily_data[var] = daily.Variables(i).ValuesAsNumpy() 
 
-daily_df = pd.DataFrame(daily_data) print("\nDaily Data:") print(daily_df) 
-
- 
+daily_df = pd.DataFrame(daily_data) 
+print("\nDaily Data:") 
+print(daily_df)

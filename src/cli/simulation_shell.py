@@ -43,6 +43,7 @@ class SimulationShell:
 
     def run(self) -> None:
         """Run the live simulation shell until the user exits."""
+        interrupted = False
         with Live(
             self.render_dashboard(),
             console=self.console,
@@ -51,16 +52,26 @@ class SimulationShell:
             transient=False,
         ) as live:
             with _TerminalKeyReader() as key_reader:
-                while not self._should_exit:
-                    timeout = self.session.playback_delay_seconds if not self.session.paused else 0.1
-                    key = key_reader.poll(timeout=timeout)
-                    if key is not None:
-                        self._handle_keypress(key, live=live, key_reader=key_reader)
-                    elif not self.session.paused:
-                        self.session.step()
-                    live.update(self.render_dashboard(), refresh=True)
+                try:
+                    while not self._should_exit:
+                        timeout = self.session.playback_delay_seconds if not self.session.paused else 0.1
+                        key = key_reader.poll(timeout=timeout)
+                        if key is not None:
+                            self._handle_keypress(key, live=live, key_reader=key_reader)
+                        elif not self.session.paused:
+                            self.session.step()
+                        live.update(self.render_dashboard(), refresh=True)
+                except KeyboardInterrupt:
+                    interrupted = True
+                    self._should_exit = True
 
-        DisplayHelper.print_info("Exited simulation shell.", title="Simulation")
+        if interrupted:
+            DisplayHelper.print_info(
+                "Interrupted (Ctrl-C); exited simulation shell.",
+                title="Simulation",
+            )
+        else:
+            DisplayHelper.print_info("Exited simulation shell.", title="Simulation")
 
     def render_dashboard(self):
         """Build the full live dashboard renderable."""

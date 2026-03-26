@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class EntityType(Enum):
-    """Type of domain entity for ML feature extraction."""
+    """Type of domain entity"""
 
     INSTALLATION = "installation"
     FACILITY = "facility"

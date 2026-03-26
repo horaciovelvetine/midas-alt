@@ -14,6 +14,7 @@ from src.config.app_state import get_app_state
 from src.models import Facility, Installation, System
 from src.models.work_order import WorkOrder
 from src.simulation import DataExporter, DataGenerator, SimulationDataLoader, SimulationSession
+from src.simulation.modules.system_degradation import SystemDegradationModule
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -286,6 +287,7 @@ def handle_run_time_simulation() -> None:
             result=result,
             settings=settings,
             installation_id=installation_id,
+            modules=[SystemDegradationModule()],
         )
         SimulationShell(session).run()
         InputHelper.wait_for_continue("\nPress Enter to return to the simulation menu")

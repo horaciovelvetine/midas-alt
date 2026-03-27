@@ -17,9 +17,11 @@ On startup, MIDAS loads `src/config/midas_config_values.xlsx` (via `ApplicationS
 
 **Main menu** (first item is the primary entry path):
 
-1. **Run Time Simulation** — load or generate one installation, then open the live simulation dashboard (starts **paused**).
-2. **Simulation** — explore data, tabular facility/system view, quick generate + stats, full generate-and-export wizard.
+1. **Run Time Simulation** — load or generate one installation, then the live shell (**paused** at start). Steps and keys are under **Primary workflow** below.
+2. **Simulation** — explore hierarchies and work orders in the terminal, tabular facility/system + work-order detail view, quick generate + stats (including work-order breakdown), full generate-and-export wizard.
 3. **Configuration** — summaries for facility types, system types, installation locations, raw config values, reload from disk.
+
+**Menu navigation:** enter a number to select an item. **`b`** goes back to the parent menu from Simulation or Configuration. **`q`** or **`quit`**, or **Ctrl-C**, quits MIDAS from any menu. Wizards and data browsers use the same **`b`** / **`q`** (and Ctrl-C where noted) to step back or leave the flow.
 
 ### Requirements
 
@@ -36,7 +38,7 @@ On startup, MIDAS loads `src/config/midas_config_values.xlsx` (via `ApplicationS
 3. If the loaded dataset has multiple installations, pick one (`installation_id` is required for multi-installation results).
 4. Use the live dashboard (keyboard-driven).
 
-**Dashboard panels** (high level): simulated date; pause/running state, tick size, playback delay; installation condition index and aggregate degraded / inoperable / mission-blocked counts; work-order counts by status; facility dependency tree (systems **hidden** until you toggle or focus); optional inspect/focus panel; controls help.
+**Layout:** top row = installation summary, simulation clock/state, work-order counts; optional **Mission alerts** strip when rules fire (**`a`** opens detail); below = dependency graph + inspect (**`f`** or focusing a facility reveals systems); **`h`** toggles the key reference panel. UI specifics and alert rules live in [`docs/simulation_system_internals.md`](docs/simulation_system_internals.md#shell-and-dashboard).
 
 **Keys** (see in-app help with `h`):
 
@@ -47,12 +49,13 @@ On startup, MIDAS loads `src/config/midas_config_values.xlsx` (via `ApplicationS
 | `t` | Cycle tick size: day → week → month → year |
 | `+` or `]` | Faster playback (shorter delay between ticks) |
 | `-` or `[` | Slower playback |
-| `i` | Inspect / focus facility or system (prompted) |
+| `i` | Inspect: facility list first (number, **s** system, **c** clear, **b** back to sim); **b** also exits system picker |
+| `a` | Mission impact view (red strip visible): rules + snapshot + table; pick # for drill-down (metrics, why, sample WOs), **0** to close |
 | `f` | Show or hide systems under facilities in the tree |
 | `h` | Toggle controls help panel |
 | `q` / Ctrl-C | Quit back to the menu |
 
-**Runtime behavior today:** the clock advances time, **age caches** on facilities/systems are updated each tick, **`SystemDegradationModule`** applies passive deterioration to system CI based on simulated age relative to `SystemType.life_expectancy`, **facility and installation condition indices are recomputed** as averages of child entities, and **history snapshots** are recorded. Thresholds from config still drive **degraded / inoperable / mission-blocked** labels and **`CriticalStatePausePolicy`** (pauses when an entity **newly** becomes inoperable or mission-blocked after tick 0).
+**Each tick (summary):** clock and ages advance, **modules** run (the interactive CLI includes **`SystemDegradationModule`** for passive system CI loss), parent CIs roll up from systems, **history** records snapshots, then **pause policies** run. Status labels and pauses follow config thresholds; precise order and rules are in the internals doc.
 
 ## Architecture
 
@@ -115,19 +118,13 @@ Notable rules: installation and facility CI are **aggregates** of children; depe
 ## Runtime simulation flow
 
 ```text
-LoadedOrGeneratedData
-  -> SimulationDataLoader / DataGenerator
-    -> SimulationSession.from_generation_result(...)
-      -> SimulationClock
-      -> Tick modules (runtime CLI registers `SystemDegradationModule`)
-      -> Aggregate CI recalculation
-      -> ConditionHistoryStore
-      -> Pause policies (default: CriticalStatePausePolicy)
-      -> SimulationShell (Rich)
+DataGenerator or SimulationDataLoader
+  -> GenerationResult
+  -> SimulationSession.from_generation_result(...)   # one installation, deep-copied slice
+  -> SimulationShell (step loop: modules, CI rollup, history, pause policies)
 ```
 
-- Exactly **one** installation per session; `select_installation_result` deep-copies a slice when needed.
-- Initial state is snapshotted in `__post_init__`; each `step()` advances the clock, refreshes age caches, runs modules, recalculates aggregates, records history, then runs pause policies.
+See [`docs/simulation_system_internals.md`](docs/simulation_system_internals.md#the-tick-lifecycle) for the exact **`step()`** order and initialization (tick `0` snapshot, first pause-policy pass).
 
 ## Configuration workbook
 
@@ -199,24 +196,19 @@ print(session.current_date, session.installation.condition_index)
 
 `DataExporter.generate_and_export` also supports `method="installations"` and `method="facilities"` with a required `target_count`.
 
-## Extending condition index over time
+## Extending runtime simulation
 
-The runtime CLI now registers **`SystemDegradationModule`** by default. Add more tick behavior as **`Base` subclasses** in `src/simulation/modules/`, registered on `SimulationSession(modules=[...])`:
-
-1. Mutate **system** (and work-order) state inside `apply()`; session **already** rolls facility/installation CI up after modules run.
-2. Use `session.current_date` and `session.clock.tick_size` to scale effects per tick.
-3. Emit `ModuleEvent(..., should_pause=True)` for immediate stops; the default pause policy still catches **newly** critical aggregate states.
-4. Prefer **`ConditionHistoryStore`** for CI history; integrating that history into export instead of (or alongside) synthetic transformer time series is a natural follow-on.
-
-The built-in degradation module uses discrete condition bands (`excellent` → `good` → `fair` → `poor` → `critical` → `failed`) and an age-weighted transition hazard so older systems, and systems beyond their nominal service life, deteriorate faster than younger assets of the same type.
+Implement **`Base`** in `src/simulation/modules/` and pass **`modules=[...]`** into **`SimulationSession`**. In **`apply()`**, change **systems** (CI, work orders, etc.); the session updates facility/installation CI, history, and pause evaluation. Use **`session.current_date`** and **`session.clock.tick_size`** to scale work per tick; call **`session.rebuild_indexes()`** if you change hierarchy membership. The interactive CLI already adds **`SystemDegradationModule`** (bands, age vs life expectancy, tick-scaled hazard—see `src/simulation/modules/system_degradation.py`). Module contract, pause behavior, and limitations: [`docs/simulation_system_internals.md`](docs/simulation_system_internals.md).
 
 ## Tests
 
 - `tests/conftest.py`: shared fixtures
+- `tests/unit/test_cli_interrupts.py`: menu/wizard interrupt handling, startup continue prompt
+- `tests/unit/test_simulation_shell_panels.py`: dashboard panel text and mission-alert rules (no Live loop)
 - `tests/integration/test_config_loading_integration.py`: Excel config load
 - `tests/integration/test_generation_and_export_integration.py`: generation + export
 - `tests/integration/test_simulation_loader_integration.py`: CSV/XLSX load
-- `tests/integration/test_simulation_runtime_integration.py`: session, history, pause policy
+- `tests/integration/test_simulation_runtime_integration.py`: session, history, pause policy, `SystemDegradationModule`
 - `tests/integration/test_simulation_cli_integration.py`: CLI/menu/shell behaviors
 
 ## Development
@@ -230,6 +222,7 @@ uv run ruff format .
 Focused simulation tests:
 
 ```bash
+uv run pytest tests/unit/test_simulation_shell_panels.py tests/unit/test_cli_interrupts.py
 uv run pytest tests/integration/test_simulation_loader_integration.py
 uv run pytest tests/integration/test_simulation_runtime_integration.py
 uv run pytest tests/integration/test_simulation_cli_integration.py
@@ -237,4 +230,4 @@ uv run pytest tests/integration/test_simulation_cli_integration.py
 
 ## Further reading
 
-- [`docs/simulation_system_internals.md`](docs/simulation_system_internals.md) — deeper walkthrough of runtime and data flow.
+- [`docs/simulation_system_internals.md`](docs/simulation_system_internals.md) — runtime tick order, session ownership, module authoring, shell behavior, and gotchas (companion to this file; avoids duplicating that detail here).

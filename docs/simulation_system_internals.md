@@ -1,20 +1,14 @@
 # MIDAS Simulation System Internals
 
-This document explains how the simulation system is put together today, with an emphasis on the runtime pieces you need to understand before adding new behavior under `src/simulation/modules/`. It now includes a built-in passive system degradation module, so the runtime examples below reflect both the core session flow and that concrete module.
+Companion to [`README.md`](../README.md): user flows and file map stay there; this doc covers **runtime** shape—where data comes from, what **`SimulationSession`** owns, **`step()`** ordering, and how to add **`Base`** modules without fighting derived state.
 
-Use this as the companion to `README.md` when you want to answer questions like:
-
-- Where does simulation data come from?
-- What owns mutable runtime state?
-- What happens on each tick?
-- What should a module mutate directly?
-- Which values are derived and will be recalculated automatically?
+**You will use this to decide:** what to mutate in `apply()`, what the session recomputes for you, and where UI ends (`simulation_shell.py`) vs simulation logic.
 
 ## One-Screen Mental Model
 
 ```mermaid
 flowchart TD
-    A["Workbook settings`src/config/midas_config_values.xlsx`"]
+    A["Workbook config (.xlsx)"]
     B["DataGenerator"]
     C["SimulationDataLoader"]
     D["GenerationResult -> installations, facilities, systems, work_orders"]
@@ -44,22 +38,7 @@ flowchart TD
     G --> I
 ```
 
-```text
-Workbook Settings
-  -> DataGenerator / SimulationDataLoader
-  -> GenerationResult
-  -> SimulationSession (exactly one active installation)
-  -> step()
-       1. advance clock
-       2. sync simulated ages
-       3. run modules
-       4. recalculate parent aggregates
-       5. record CI history snapshots
-       6. run pause policies
-  -> SimulationShell / history export
-```
-
-(Currently) The runtime simulates one installation at a time, and the `SimulationSession` is the single owner of mutable runtime state for that installation.
+One installation per session; **`SimulationSession`** owns mutable runtime state for that slice.
 
 ## The Main Pieces
 
@@ -141,23 +120,7 @@ The module is intentionally narrow in scope:
 - it scales deterioration to the active tick size
 - it emits non-pausing events when a system drops into a worse condition band
 
-The current model is passive only. It does not yet model maintenance recovery, backlog penalties, or sudden failure shocks.
-
-```mermaid
-flowchart TD
-    sessionStep[SimulationSessionStep] --> advanceClock[AdvanceClock]
-    advanceClock --> syncAges[SyncAgeCaches]
-    syncAges --> degradeApply[SystemDegradationModuleApply]
-    degradeApply --> resolveType[ResolveSystemTypeFromSessionSettings]
-    resolveType --> calcAgeRatio[ComputeAgeRatioFromAgeAndLifeExpectancy]
-    calcAgeRatio --> mapState[MapCurrentCIToConditionBand]
-    mapState --> tickYears[ConvertTickSizeToYearFraction]
-    tickYears --> sampleHazard[ConsumeAgeWeightedTransitionHazard]
-    sampleHazard --> updateCi[UpdateSystemCIAndEmitEvent]
-    updateCi --> aggregates[RecalculateAggregateCI]
-    aggregates --> history[RecordHistorySnapshots]
-    history --> pausePolicies[RunPausePolicies]
-```
+The current model is passive only (no maintenance recovery, backlog penalties, or shock failures).
 
 ### Pause policies
 
@@ -172,13 +135,11 @@ It tracks prior critical entities so the same failure does not trigger a pause e
 
 ### Shell and dashboard
 
-`src/cli/simulation_shell.py` is the UI layer over the session.
+`src/cli/simulation_shell.py` renders **`SimulationSession`** state only; keep business rules in modules or pause policies.
 
-It is important to think of the shell as a consumer of runtime state, not the place where business logic should live. New simulation behavior should usually go into:
+**Stack (top to bottom):** three summary panels (installation, simulation overview, work orders) → optional **Mission alerts** strip (red border: narrative, category counts, thresholds; **`a`** pauses and opens explainer + snapshot + “why” table + numbered drill-down to metrics, rules, sample WOs) → **Installation Graph** beside **Inspect**. Systems in the tree stay hidden until **`f`** or until a facility is focused (focus always expands that facility’s systems).
 
-- a module
-- a pause policy
-- session helpers if the behavior is core runtime plumbing
+**Where to add behavior:** usually a **module**, a **pause policy**, or **session** helpers—not the shell.
 
 ## How Data Enters the Runtime
 
@@ -214,25 +175,7 @@ This is the core runtime loop inside `SimulationSession.step()`:
 7. Run pause policies.
 8. If any returned event has `should_pause=True`, pause the session using the first such event message.
 
-That ordering has a few important consequences.
-
-```mermaid
-flowchart LR
-    A["Clear prior stop reason"]
-    B["Advance clock -> increment tick index"]
-    C["Sync age caches"]
-    D["Run modules"]
-    E["Recalculate aggregate CI"]
-    F["Record history snapshots"]
-    G["Run pause policies"]
-    H{"Any pause event?"}
-    I["Pause session with first event message"]
-    J["Return events"]
-
-    A --> B --> C --> D --> E --> F --> G --> H
-    H -- Yes --> I --> J
-    H -- No --> J
-```
+The subsections below spell out what that order implies for module authors.
 
 ### Modules see the new date
 
@@ -326,84 +269,13 @@ Open work-order statuses are:
 
 Completed work orders are not considered open.
 
-## What to Mutate in a Module
+## Authoring modules
 
-As a rule of thumb:
+**Leaf mutations:** change **system** `condition_index` and **work order** lifecycle fields yourself; **`session.step()`** recomputes facility/installation CI, history, and pause checks. Parent CI you set by hand is overwritten unless children change (see **Parent condition indices are derived** above).
 
-- mutate systems directly for CI changes
-- mutate work orders directly for status/lifecycle changes
-- let the session derive parent CIs and runtime status from those leaf changes
+**Structural edits:** adding/removing/relinking work orders, systems, facilities, or parent/child IDs requires consistent FK fields plus **`session.rebuild_indexes()`** so maps and **`system.work_orders`** stay aligned. Scalar-only edits do not.
 
-Good module responsibilities include:
-
-- degrading system CI over time
-- improving CI when repair conditions are met
-- opening, closing, or escalating work orders
-- emitting events when something noteworthy happens
-
-Be careful with structural changes.
-
-If a module adds, removes, or reassigns:
-
-- work orders
-- systems
-- facilities
-- parent-child relationships
-
-it should also update the relevant ID fields and call `session.rebuild_indexes()` so the lookup maps and `system.work_orders` stay consistent.
-
-If a module only changes scalar fields like `condition_index` or `status`, `rebuild_indexes()` is not needed.
-
-## Writing Modules Safely
-
-### Recommended pattern
-
-Use `session.step()` as the owner of orchestration and keep modules focused on one concern each.
-
-Good module traits:
-
-- small scope
-- predictable mutations
-- no UI responsibilities
-- no direct history writes
-- no parent-CI bookkeeping
-
-### Tick-size awareness
-
-The clock can run in days, weeks, months, or years.
-
-Modules should use:
-
-- `session.current_date`
-- `session.clock.tick_size`
-
-to scale behavior to the active tick size instead of assuming one day per step.
-
-`SystemDegradationModule` follows this rule by converting `TickSize` into an approximate year fraction before applying its passive deterioration hazard.
-
-### Emit events instead of pausing manually
-
-If a module detects something that should stop playback immediately, return a `ModuleEvent` with `should_pause=True`.
-
-That keeps pause behavior aligned with the existing session flow and gives the session a user-facing pause reason.
-
-Because module events are appended before pause-policy events, the first pause-worthy module event becomes the stop reason if it appears before any pause-policy event.
-
-### Prefer derived helpers over duplicate logic
-
-Useful session helpers for modules include:
-
-- `session.systems`
-- `session.facilities`
-- `session.work_orders`
-- `session.systems_by_id`
-- `session.systems_by_facility`
-- `session.work_orders_by_system`
-- `session.get_system_state(...)`
-- `session.get_facility_state(...)`
-- `session.get_installation_state()`
-
-If a module needs status counts, open work-order counts, or critical-state checks, these helpers are usually the right starting point.
+**Design:** one concern per module, no UI, no direct history writes—orchestration stays in **`session.step()`**. Scale effects with **`session.current_date`** and **`session.clock.tick_size`** ( **`SystemDegradationModule`** converts tick size to a year fraction). Return **`ModuleEvent(..., should_pause=True)`** for an immediate stop; module events are processed before pause-policy events, so ordering affects which message becomes **`stop_reason`**. Prefer **`get_system_state` / `get_facility_state` / `get_installation_state`**, **`work_orders_by_system`**, and the entity lists over re-deriving status rules.
 
 ## Example Module Skeleton
 
@@ -469,15 +341,13 @@ At the moment, resiliency grade is useful context, but the core runtime degraded
 
 Generated work-order volume is influenced by system age and life expectancy through the configured distributions. That gives the runtime a more realistic initial state even before any runtime modules start changing data.
 
-## Current Limitations and Gotchas
+## Current limitations
 
-- The runtime now includes a built-in passive CI degradation module, but it is monotonic only: no maintenance recovery, work-order-driven effects, backlog penalties, or shock-failure behavior yet.
-- History is CI-only. Work-order changes are visible in current state, but not captured as historical snapshots.
-- The session simulates exactly one installation at a time.
-- The initial session snapshot is recorded at tick `0` before the user starts playback.
-- `CriticalStatePausePolicy` does not emit a new-critical pause event at tick `0`; it is meant to catch new transitions after the simulation begins.
-- Generated work-order timestamps are created with wall-clock `datetime.now()` during generation, while runtime ages are recomputed from the simulated clock.
-- If a module changes collection membership or parent-child relationships and does not rebuild indexes, lookup maps and embedded `system.work_orders` can become stale.
+- **`SystemDegradationModule`** is passive and monotonic (no recovery, shocks, or work-order-driven CI yet); see **Built-in system degradation module** above.
+- **History** snapshots CI only; work-order state is live-only.
+- **One installation** per session; initial snapshot at tick **`0`**; **`CriticalStatePausePolicy`** ignores newly critical entities on that tick so load-generated crises do not auto-pause before playback.
+- **Generation vs runtime:** work-order timestamps may use wall-clock **`datetime.now()`** at generation time, while ages follow the simulated clock during **`step()`**.
+- **Stale indexes** if you change hierarchy membership without **`rebuild_indexes()`**.
 
 ## Where To Read Code First
 
@@ -490,25 +360,16 @@ If you are new to this part of the codebase, read these files in this order:
 5. `src/simulation/runtime/history.py`
 6. `src/cli/simulation_shell.py`
 7. `tests/integration/test_simulation_runtime_integration.py`
+8. `tests/unit/test_simulation_shell_panels.py` (panel strings and mission-alert thresholds without a Live terminal loop)
+9. `tests/unit/test_cli_interrupts.py` (menu and wizard behavior on Ctrl-C / EOF)
 
-The runtime integration test is especially useful because it now includes both the minimal `ForceInoperableModule` example and seeded coverage for `SystemDegradationModule`, showing how a module can mutate a system and let the rest of the runtime react automatically.
+The runtime integration test is especially useful because it includes both the minimal `ForceInoperableModule` example and seeded coverage for `SystemDegradationModule`, showing how a module can mutate a system and let the rest of the runtime react automatically.
 
-## Practical Guidance For The First Real Modules
+## Sensible next features
 
-The safest early modules are system-level modules that:
+Stay in **modules** / **pause policies** / **session**, not the shell:
 
-- read age, CI, and work-order context from the session
-- update system CI
-- optionally adjust work-order status
-- emit events for notable changes
-- rely on the session to recompute parent aggregates
-- rely on pause policies for critical-state stopping behavior
-
-A good next sequence would be:
-
-1. tune or externalize the system CI degradation model
-2. work-order progression
-3. repair effects on CI
-4. richer mission-impact logic
-
-That sequence keeps new behavior aligned with the current architecture instead of pushing simulation logic into the shell or export layers.
+1. Tune or externalize **`SystemDegradationModule`**
+2. Work-order progression rules
+3. Repair effects on CI
+4. Richer mission-impact logic

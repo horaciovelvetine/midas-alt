@@ -2,8 +2,6 @@
 
 import logging
 
-from rich.prompt import Confirm
-
 from src.cli.utils import DisplayHelper, InputHelper
 from src.config.app_state import ApplicationState, get_app_state, set_app_state
 from src.config.display import (
@@ -26,7 +24,7 @@ def handle_reload_configuration() -> None:
         title="Configuration Update Instructions",
     )
 
-    if Confirm.ask("Have you saved your changes to the Excel file?", default=False):
+    if InputHelper.confirm("Have you saved your changes to the Excel file?", default=False):
         DisplayHelper.print_info("Reloading configuration...", title="MIDAS")
         try:
             # Reload configuration

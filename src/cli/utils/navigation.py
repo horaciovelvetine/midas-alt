@@ -39,18 +39,17 @@ class NavigationHelper:
 
     @staticmethod
     def can_go_back(value: str | None) -> bool:
-        """Check if user input indicates going back.
-
-        Args:
-            value: User input value.
-
-        Returns:
-            True if value indicates going back, False otherwise.
-
-        """
+        """Check if user input indicates going back one level (b / back)."""
         if value is None:
             return False
-        return value.lower().strip() in ["b", "back", "exit"]
+        return value.lower().strip() in ["b", "back"]
+
+    @staticmethod
+    def should_quit_to_menu(value: str | None) -> bool:
+        """True for Ctrl-C / EOF (None) or explicit q / quit (leave current flow for the parent menu)."""
+        if value is None:
+            return True
+        return value.lower().strip() in ["q", "quit"]
 
     @staticmethod
     def handle_back_command() -> str:

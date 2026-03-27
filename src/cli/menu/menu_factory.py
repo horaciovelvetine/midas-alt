@@ -50,13 +50,6 @@ def get_configuration_menu():
         handle_reload_configuration,
         description="Reload configuration values from the Excel file after making changes",
     )
-    builder.add_separator()
-    builder.add_item(
-        "Exit back to Main Menu",
-        lambda: None,
-        exit_menu=True,
-        description="Return to the main menu",
-    )
     return builder.build()
 
 
@@ -71,24 +64,17 @@ def get_simulation_menu():
     builder.add_item(
         "View Single Facility + System",
         handle_view_facility_and_system,
-        description="Generate one installation and inspect a selected facility/system pair",
+        description="Generate one installation, pick a facility/system, and list or open full detail for generated work orders",
     )
     builder.add_item(
         "Quick Generate & Stats",
         handle_quick_generate,
-        description="Quickly generate data and view summary statistics",
+        description="Quickly generate data and view summary statistics including work-order counts and status/priority breakdown",
     )
     builder.add_item(
         "Generate & Export Dataset",
         handle_generate_data,
         description="Full wizard to generate and export data (CSV, Excel)",
-    )
-    builder.add_separator()
-    builder.add_item(
-        "Back to Main Menu",
-        lambda: None,
-        exit_menu=True,
-        description="Return to the main menu",
     )
     return builder.build()
 
@@ -108,20 +94,17 @@ def get_main_menu():
     #     """Navigate to ML prediction menu."""
     #     get_ml_prediction_menu().run()
 
-    def handle_exit() -> None:
-        """Exit the application."""
-        console.print("\n[cyan]Exiting MIDAS[/cyan]\n")
-
     builder = MenuBuilder("Main Menu")
+    builder.set_root_menu(True)
     builder.add_item(
         "Run Time Simulation",
         handle_run_time_simulation,
-        description="Load or generate one installation and run a live time-stepped simulation shell",
+        description="Load or generate one installation and run a live time-stepped simulation shell (dashboard includes work-order status counts)",
     )
     builder.add_item(
         "Simulation",
         handle_simulation,
-        description="Explore generated data, inspect hierarchies, and export simulation datasets",
+        description="Explore generated data (including work orders), inspect hierarchies, and export simulation datasets",
     )
     builder.add_item(
         "Configuration",
@@ -133,11 +116,4 @@ def get_main_menu():
     #     handle_ml_prediction,
     #     description="Train models, extract features, and predict degradation timing",
     # )
-    builder.add_separator()
-    builder.add_item(
-        "Exit",
-        handle_exit,
-        exit_menu=True,
-        description="Exit the MIDAS application",
-    )
     return builder.build()

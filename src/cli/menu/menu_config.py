@@ -23,3 +23,4 @@ class MenuConfig:
     border_style: str = "blue"
     show_shortcuts: bool = False
     auto_number: bool = True
+    is_root_menu: bool = False

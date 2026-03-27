@@ -3,13 +3,20 @@ import sys
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Prompt
+
+from src.cli.utils import InputHelper
 
 from .menu_config import MenuConfig
 from .menu_item import MenuItem
 
 logger = logging.getLogger(__name__)
 console = Console()
+
+
+def _quit_midas() -> None:
+    """Print exit message and terminate the process."""
+    console.print("\n[cyan]Exiting MIDAS[/cyan]\n")
+    sys.exit(0)
 
 
 class MenuHandler:
@@ -96,14 +103,20 @@ class MenuHandler:
 
         console.print(padding)
         console.print(Panel(menu_text, title=self.config.title, border_style=self.config.border_style))
+        if self.config.is_root_menu:
+            console.print("[dim]q or quit · Ctrl-C quits[/dim]")
+        else:
+            console.print("[dim]b back · q or quit · Ctrl-C quits[/dim]")
 
     def get_choices(self) -> list[str]:
-        """Get list of valid choice strings."""
-        return [str(i) for i in range(1, len(self._visible_items) + 1)]
+        """Get list of valid choice strings (numbers plus navigation keys)."""
+        numeric = [str(i) for i in range(1, len(self._visible_items) + 1)]
+        extra = [] if self.config.is_root_menu else ["b"]
+        return numeric + extra + ["q", "quit"]
 
     def get_default_choice(self) -> str:
-        """Get the default choice (last item, typically exit)."""
-        return str(len(self._visible_items))
+        """Default to the first listed option."""
+        return "1"
 
     def get_item_by_index(self, index: int) -> MenuItem | None:
         """Get menu item by its visible index (1-based).
@@ -148,7 +161,7 @@ class MenuHandler:
 
     def wait_for_continue(self, message: str = "\nPress Enter to continue") -> None:
         """Wait for user to press Enter before continuing."""
-        Prompt.ask(message, default="")
+        InputHelper.wait_for_continue(message)
 
     def run(self) -> None:
         """Run the menu loop."""
@@ -159,7 +172,23 @@ class MenuHandler:
                 break
 
             self.display()
-            choice = Prompt.ask("\nSelect an option", choices=self.get_choices(), default=self.get_default_choice())
+            choice = InputHelper.safe_prompt_ask(
+                "\nSelect an option",
+                choices=self.get_choices(),
+                default=self.get_default_choice(),
+            )
+            if choice is None:
+                _quit_midas()
+
+            lowered = choice.strip().lower()
+            if lowered in ("q", "quit"):
+                _quit_midas()
+
+            if lowered == "b":
+                if self.config.is_root_menu:
+                    console.print("[dim]Already at main menu. Use q to quit.[/dim]\n")
+                    continue
+                break
 
             try:
                 item_index = int(choice)

@@ -1,6 +1,7 @@
 """CLI interface for MIDAS application using Rich for menu-based navigation."""
 
 import logging
+import sys
 
 from rich.console import Console
 from rich.panel import Panel
@@ -65,7 +66,11 @@ def run_cli() -> None:
     """Run the CLI application with menu navigation."""
     display_welcome()
     initialize_configuration()
-    get_main_menu().run()
+    try:
+        get_main_menu().run()
+    except KeyboardInterrupt:
+        console.print("\n[dim]Goodbye.[/dim]")
+        sys.exit(0)
 
 
 # ============================================================================

@@ -95,6 +95,11 @@ class MenuBuilder:
         self._config.show_shortcuts = show
         return self
 
+    def set_root_menu(self, is_root: bool = True) -> "MenuBuilder":
+        """Mark this menu as the root (main) menu for navigation hints and key handling."""
+        self._config.is_root_menu = is_root
+        return self
+
     def build(self) -> "MenuHandler":
         """Build and return the MenuHandler.
 

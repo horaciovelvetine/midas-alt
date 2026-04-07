@@ -1,0 +1,403 @@
+================================================================================
+  DEGRADATION RISK SCORING — HOW IT WORKS & HOW TO USE IT
+================================================================================
+
+OVERVIEW
+--------
+The degradation risk scoring system (Step 6 in the pipeline) converts the
+7-day weather forecast into infrastructure risk scores for every Air Force
+base. It answers the question: "Given next week's weather, which bases and
+which building systems are under the most stress?"
+
+No failure labels are needed. The formulas are based on known physics of how
+weather degrades building materials — freeze-thaw cracking concrete, wind
+lifting roof membranes, humidity corroding electrical contacts, etc.
+
+The output is designed to plug directly into the MIDAS-alt degradation
+simulation as a weather multiplier on facility condition index decay rates.
+
+
+================================================================================
+  HOW TO RUN IT
+================================================================================
+
+Option 1: Run the full pipeline (fetches fresh data + predictions + risk)
+
+    python pipeline.py
+
+Option 2: Skip API fetches, reuse cached data (faster)
+
+    python pipeline.py --skip-fetch
+
+Option 3: Run only the risk scoring step (requires existing forecast CSV)
+
+    python code/build_degradation_risk.py
+
+The script reads:
+    data/predictions/all_bases_7day_forecast.csv
+
+And produces:
+    data/predictions/degradation_risk_scores.csv
+    data/predictions/degradation_risk_scores.xlsx
+    png/degradation_system_risk_heatmap.png
+    png/degradation_top_risk_bases.png
+    png/degradation_component_scores.png
+    png/degradation_cluster_risk_comparison.png
+
+
+================================================================================
+  STEP-BY-STEP: HOW THE SCORING WORKS
+================================================================================
+
+The process has 5 stages:
+
+  [7-Day Forecast CSV]
+        |
+        v
+  STAGE 1: Aggregate raw weather stressors per base (7-day totals/maxes)
+        |
+        v
+  STAGE 2: Normalize each stressor to a 0-100 component score
+        |
+        v
+  STAGE 3: Weighted combination into 6 system-type risk scores
+        |
+        v
+  STAGE 4: Weighted combination into 1 overall infrastructure risk score
+        |
+        v
+  STAGE 5: Assign risk band (Low / Moderate / High / Critical)
+        |
+        v
+  [Output CSV + Excel + Visualizations]
+
+
+--------------------------------------------------------------------------------
+STAGE 1: RAW WEATHER STRESSORS
+--------------------------------------------------------------------------------
+
+For each base, the 7 days of forecast data are aggregated into 11 stressors:
+
+  Stressor                   How It's Calculated
+  -------------------------  ---------------------------------------------------
+  freeze_thaw_days           Count of days where temp_max > 32F AND temp_min < 32F
+  total_precip_mm            Sum of daily precipitation over 7 days
+  total_rain_mm              Sum of daily rain over 7 days
+  total_snow_cm              Sum of daily snowfall over 7 days
+  total_precip_hours         Sum of daily precipitation hours over 7 days
+  max_wind_gust_kmh          Maximum single-day wind gust in the 7 days
+  avg_wind_speed_kmh         Average daily mean wind speed
+  avg_humidity_max_pct       Average of daily max relative humidity
+  max_apparent_temp_f        Highest apparent (feels-like) temperature
+  avg_temp_swing_f           Average of (daily_max - daily_min) temperature
+  max_consecutive_wet_days   Longest streak of days with precipitation > 0
+  avg_cloud_cover_pct        Average daily cloud cover percentage
+
+
+--------------------------------------------------------------------------------
+STAGE 2: NORMALIZED COMPONENT SCORES (0 to 100)
+--------------------------------------------------------------------------------
+
+Each raw stressor is converted to a 0-100 score using thresholds based on
+known damage onset points from civil engineering standards.
+
+  Component         Formula                                    Why This Threshold
+  ----------------  -----------------------------------------  ---------------------------
+  freeze_thaw       min(days / 5 * 100, 100)                   Concrete survives ~300 total
+                                                                lifetime cycles. 5/week is
+                                                                the maximum practical rate.
+
+  rain              min(precip_mm / 75 * 100, 100)             75mm/week (3 inches) is NWS
+                                                                "heavy" — overwhelms drainage,
+                                                                drives active water intrusion.
+
+  snow              min(snow_cm / 25 * 100, 100)               25cm/week creates significant
+                                                                structural snow load and ice
+                                                                dam risk on roofing.
+
+  wind              min(max(0, gust - 20) / 80 * 100, 100)    Below 20 km/h: zero risk.
+                                                                100 km/h (62 mph): severe —
+                                                                roof membrane failure zone.
+                                                                Matches ASCE 7 wind load curve.
+
+  humidity          min(max(0, hum - 50) / 45 * 100, 100)     Below 50% RH: corrosion and
+                                                                mold are negligible. Above 70%:
+                                                                steel corrosion accelerates.
+                                                                95%+: condensation on electronics.
+
+  heat              min(max(0, temp - 85) / 25 * 100, 100)    Below 85F: HVAC operates in spec.
+                                                                95F: near-continuous HVAC run.
+                                                                110F: asphalt softens, transformers
+                                                                overload, compressor failures.
+
+  temp_swing        min(swing / 40 * 100, 100)                40F daily range is extreme thermal
+                                                                cycling. Sealant lifespan drops
+                                                                ~40% when swings exceed 30F.
+                                                                Expansion/contraction fatigues
+                                                                joints and connections.
+
+  wetness           min(hours / 48 * 100, 100)                48+ hours of precipitation in a
+                                                                week means prolonged moisture
+                                                                exposure — materials never dry,
+                                                                accelerating rot and corrosion.
+
+  wet_streak        min(consec_days / 5 * 100, 100)           5+ consecutive wet days prevents
+                                                                drying between events. Worse
+                                                                for some materials than total
+                                                                rain volume.
+
+Example: A base with 3 freeze-thaw days, 40mm rain, and 70 km/h gusts:
+  freeze_thaw_score = 3/5 * 100       = 60
+  rain_score        = 40/75 * 100      = 53.3
+  wind_score        = (70-20)/80 * 100 = 62.5
+
+
+--------------------------------------------------------------------------------
+STAGE 3: SYSTEM-TYPE RISK SCORES (6 systems, each 0-100)
+--------------------------------------------------------------------------------
+
+Different building systems fail from different weather stressors. Each system
+type uses a different weighting based on DOD facility maintenance data
+(UFC 3-701-01) and BUILDER SMS failure mode distributions.
+
+ROOFING SYSTEMS
+  0.30 x wind  +  0.25 x rain  +  0.20 x freeze_thaw
+  + 0.10 x snow  +  0.10 x wetness  +  0.05 x temp_swing
+  Why: Wind uplift is the #1 cause of commercial roof failure. Rain tests
+  the roof's primary function. Freeze-thaw attacks flashing and seams.
+
+ELECTRICAL / CONTROLS
+  0.30 x humidity  +  0.25 x heat  +  0.15 x wet_streak
+  + 0.15 x rain  +  0.10 x wind  +  0.05 x temp_swing
+  Why: Condensation from humidity shorts circuits and corrodes contacts.
+  Heat degrades insulation and overloads transformers.
+
+PAVEMENT / FOUNDATIONS
+  0.30 x freeze_thaw  +  0.25 x temp_swing  +  0.20 x rain
+  + 0.10 x wetness  +  0.10 x snow  +  0.05 x wind
+  Why: Freeze-thaw is the primary mechanism for pothole formation.
+  Thermal cycling drives joint deterioration in concrete slabs.
+
+HVAC / MECHANICAL
+  0.30 x heat  +  0.25 x temp_swing  +  0.20 x humidity
+  + 0.15 x freeze_thaw  +  0.10 x wind
+  Why: Extreme heat forces compressors to full capacity (accelerated wear).
+  Large temp swings cause frequent heating/cooling mode changes (valve fatigue).
+
+EXTERIOR ENVELOPE (walls, windows, doors)
+  0.25 x wind  +  0.25 x rain  +  0.20 x freeze_thaw
+  + 0.15 x temp_swing  +  0.10 x humidity  +  0.05 x snow
+  Why: Wind-driven rain is the dominant moisture intrusion path for walls.
+  Freeze-thaw cracks masonry and degrades sealants around openings.
+
+PLUMBING / WATER SYSTEMS
+  0.35 x freeze_thaw  +  0.25 x temp_swing  +  0.20 x rain
+  + 0.10 x humidity  +  0.10 x wetness
+  Why: Pipe bursts from freezing are catastrophic and costly. Temperature
+  cycling fatigues pipe joints and fittings over time.
+
+Example (continuing from above):
+  roofing_risk = 0.30*62.5 + 0.25*53.3 + 0.20*60 + 0.10*0 + 0.10*0 + 0.05*0
+               = 18.75 + 13.33 + 12.0
+               = 44.08
+
+  pavement_risk = 0.30*60 + 0.25*0 + 0.20*53.3 + 0.10*0 + 0.10*0 + 0.05*62.5
+                = 18.0 + 10.66 + 3.125
+                = 31.79
+
+
+--------------------------------------------------------------------------------
+STAGE 4: OVERALL INFRASTRUCTURE RISK (single 0-100 score per base)
+--------------------------------------------------------------------------------
+
+Weighted average across all 6 system types:
+
+  0.25 x roofing
+  + 0.20 x pavement
+  + 0.20 x electrical
+  + 0.15 x hvac
+  + 0.10 x envelope
+  + 0.10 x plumbing
+
+Roofing and pavement are weighted highest because they represent the largest
+share of facility maintenance costs and have the most weather-sensitive
+failure modes across DOD installations.
+
+Example (continuing):
+  overall_risk = 0.25*44.08 + 0.20*31.79 + ... = ~35 (Moderate)
+
+
+--------------------------------------------------------------------------------
+STAGE 5: RISK BANDS AND MIDAS MULTIPLIER
+--------------------------------------------------------------------------------
+
+RISK BANDS:
+  Score      Band        Meaning
+  --------   ---------   ------------------------------------------------
+   0 - 25    Low         Normal weather, no acceleration of degradation
+  26 - 50    Moderate    Mild stress, schedule preventive inspection
+  51 - 75    High        Significant stress, accelerate maintenance
+  76 - 100   Critical    Extreme stress, immediate assessment recommended
+
+MIDAS WEATHER MULTIPLIER:
+  multiplier = 1.0 + (overall_risk / 100) * 0.5
+
+  This produces a value between 1.0 and 1.5:
+    Risk  0  -> multiplier 1.00 (no change to degradation rate)
+    Risk 25  -> multiplier 1.125 (12.5% faster degradation)
+    Risk 50  -> multiplier 1.25  (25% faster degradation)
+    Risk 75  -> multiplier 1.375 (37.5% faster degradation)
+    Risk 100 -> multiplier 1.50  (50% faster degradation)
+
+
+================================================================================
+  HOW TO USE WITH MIDAS-ALT
+================================================================================
+
+METHOD 1: OVERALL MULTIPLIER (simplest)
+----------------------------------------
+Apply the single multiplier to each facility's condition index decay:
+
+    weather_data = pd.read_csv("data/predictions/degradation_risk_scores.csv")
+    base_row = weather_data[weather_data["base_name"] == installation.name]
+    multiplier = base_row["midas_weather_multiplier"].values[0]
+
+    for facility in installation.facilities:
+        facility.condition_index -= base_degradation_rate * multiplier
+
+
+METHOD 2: SYSTEM-SPECIFIC MULTIPLIERS (more granular)
+------------------------------------------------------
+Use the 6 system-type risk scores to drive per-system degradation:
+
+    for facility in installation.facilities:
+        for system in facility.systems:
+            system_risk = base_row[f"{system.type}_risk"].values[0]
+            system_multiplier = 1.0 + (system_risk / 100) * 0.5
+            system.condition_index -= system.base_rate * system_multiplier
+
+This lets MIDAS model situations where a base has low overall risk but
+high plumbing risk (freeze-thaw spike) — pipes degrade fast while HVAC
+stays normal.
+
+
+METHOD 3: DEPENDENCY CHAIN INHERITANCE
+---------------------------------------
+For MIDAS dependency chains, the highest upstream system risk propagates:
+
+    for chain in facility.dependency_chains:
+        max_upstream_risk = max(
+            base_row[f"{sys.type}_risk"].values[0]
+            for sys in chain.upstream_systems
+        )
+        chain_multiplier = 1.0 + (max_upstream_risk / 100) * 0.5
+        chain.downstream.condition_index -= rate * chain_multiplier
+
+
+METHOD 4: UFC RESILIENCY GRADE MAPPING
+---------------------------------------
+Map risk bands to UFC resiliency grades for reporting:
+
+    Risk Band    UFC Grade   Action
+    ----------   ---------   ------------------------------------------
+    Low          G1          No weather-driven maintenance concern
+    Moderate     G2          Schedule preventive inspection
+    High         G3          Accelerate maintenance timeline
+    Critical     G4          Immediate assessment recommended
+
+
+================================================================================
+  OUTPUT FILE COLUMNS
+================================================================================
+
+The output CSV/Excel (degradation_risk_scores.csv) contains one row per base:
+
+IDENTIFICATION:
+  base_name                  Name of the Air Force base
+  cluster_id                 Weather cluster (0=Warm, 1=Cool, 2=Cold & Wet)
+  latitude                   Base latitude
+  longitude                  Base longitude
+  forecast_start             First day of the 7-day forecast window
+  forecast_end               Last day of the 7-day forecast window
+
+RAW STRESSORS:
+  freeze_thaw_days           Number of freeze-thaw cycle days (0-7)
+  total_precip_mm            Total precipitation in millimeters
+  total_rain_mm              Total rain in millimeters
+  total_snow_cm              Total snowfall in centimeters
+  total_precip_hours         Total hours of precipitation
+  max_wind_gust_kmh          Peak wind gust in km/h
+  avg_wind_speed_kmh         Average wind speed in km/h
+  avg_humidity_max_pct       Average daily max humidity (%)
+  max_apparent_temp_f        Peak feels-like temperature (F)
+  avg_temp_swing_f           Average daily temp range (F)
+  max_consecutive_wet_days   Longest wet streak (days)
+  avg_cloud_cover_pct        Average cloud cover (%)
+
+COMPONENT SCORES (0-100):
+  freeze_thaw_score          Freeze-thaw stress intensity
+  rain_score                 Precipitation stress intensity
+  snow_score                 Snow load stress intensity
+  wind_score                 Wind damage stress intensity
+  humidity_score             Humidity/corrosion stress intensity
+  heat_score                 Heat stress intensity
+  temp_swing_score           Thermal cycling stress intensity
+  wetness_score              Prolonged moisture stress intensity
+  wet_streak_score           Consecutive wet day stress intensity
+
+SYSTEM RISK SCORES (0-100):
+  roofing_risk               Roofing system risk
+  electrical_risk            Electrical / controls risk
+  pavement_risk              Pavement / foundations risk
+  hvac_risk                  HVAC / mechanical risk
+  envelope_risk              Exterior envelope risk
+  plumbing_risk              Plumbing / water systems risk
+
+FINAL SCORES:
+  overall_risk               Weighted overall infrastructure risk (0-100)
+  risk_band                  Low / Moderate / High / Critical
+  midas_weather_multiplier   Ready-to-use multiplier for MIDAS (1.0-1.5)
+
+
+================================================================================
+  GENERATED VISUALIZATIONS
+================================================================================
+
+degradation_system_risk_heatmap.png
+  All bases (rows) x 6 system types (columns). Color intensity shows risk
+  level. Bases sorted by average risk so the highest-risk bases are at top.
+  Use this to spot which bases have problems and in which systems.
+
+degradation_top_risk_bases.png
+  Horizontal bar chart of the 15 highest overall risk bases. Color-coded
+  by risk band (green=Low, yellow=Moderate, orange=High, red=Critical).
+  Shows the exact score and band label for each base.
+
+degradation_component_scores.png
+  Heatmap of the 9 component scores for the top 20 risk bases. Shows
+  which specific weather stressors are driving the risk — useful for
+  understanding WHY a base is flagged (e.g., high freeze-thaw vs high wind).
+
+degradation_cluster_risk_comparison.png
+  Grouped bar chart comparing average risk scores across the 3 weather
+  clusters (Warm, Cool, Cold & Wet) for each system type. Shows how
+  geography drives different risk profiles.
+
+
+================================================================================
+  FUTURE UPGRADES
+================================================================================
+
+Once MIDAS generates actual degradation outcomes (condition index drops
+correlated with dates), the fixed formula weights can be replaced with
+learned weights:
+
+  1. Export weekly CI drops from MIDAS per facility per system type
+  2. Pair each week's CI drop with that week's 9 component scores
+  3. Run linear regression: CI_drop ~ w1*freeze_thaw + w2*rain + ...
+  4. Replace the hardcoded weights in SYSTEM_WEIGHTS with learned ones
+
+The scoring pipeline stays identical — only the weight constants change.
+This turns the rule-based MVP into a data-driven model with zero
+architectural changes.
+================================================================================

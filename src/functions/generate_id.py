@@ -1,3 +1,5 @@
+"""Generate unique string IDs for domain entities."""
+
 from uuid import uuid4
 
 

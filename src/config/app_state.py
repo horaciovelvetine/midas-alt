@@ -8,7 +8,8 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .loader import ConfigLoadError
+from src.io.loaders import ConfigWorkbookLoadError, ConfigWorkbookLoader
+
 from .settings import MIDASSettings
 
 logger = logging.getLogger(__name__)
@@ -49,15 +50,7 @@ class ApplicationState:
 
     @classmethod
     def initialize(cls, config_path: Path | None = None) -> "ApplicationState":
-        """Load configuration and create application state.
-
-        Args:
-            config_path: Path to configuration file. If None, uses default.
-
-        Returns:
-            Initialized ApplicationState instance.
-
-        """
+        """Load workbook settings (or defaults) and return new state with ``LoadResult``."""
         load_result = LoadResult()
 
         # Determine config path
@@ -67,25 +60,37 @@ class ApplicationState:
         # Try to load settings
         try:
             if not config_path.exists():
-                load_result.add_warning(f"Configuration file not found: {config_path}\nUsing default settings.")
+                load_result.add_warning(
+                    f"Configuration file not found: {config_path}\nUsing default settings."
+                )
                 settings = MIDASSettings.with_defaults()
             else:
-                settings = MIDASSettings.from_excel(config_path)
+                settings = ConfigWorkbookLoader().load(config_path)
                 load_result.facility_types_loaded = len(settings.facility_types)
                 load_result.system_types_loaded = len(settings.system_types)
-                load_result.installation_locations_loaded = len(settings.installation_locations)
+                load_result.installation_locations_loaded = len(
+                    settings.installation_locations
+                )
 
                 # Add success info
                 if load_result.facility_types_loaded == 0:
-                    load_result.add_warning("No facility types loaded from configuration.")
+                    load_result.add_warning(
+                        "No facility types loaded from configuration."
+                    )
                 if load_result.system_types_loaded == 0:
-                    load_result.add_warning("No system types loaded from configuration.")
+                    load_result.add_warning(
+                        "No system types loaded from configuration."
+                    )
                 if load_result.installation_locations_loaded == 0:
-                    load_result.add_warning("No installation locations loaded from configuration.")
+                    load_result.add_warning(
+                        "No installation locations loaded from configuration."
+                    )
 
-        except (ConfigLoadError, OSError, TypeError, ValueError) as e:
+        except (ConfigWorkbookLoadError, OSError, TypeError, ValueError) as e:
             logger.exception("Failed to load configuration")
-            load_result.add_error(f"Configuration load error: expected readable workbook (got {e})")
+            load_result.add_error(
+                f"Configuration load error: expected readable workbook (got {e})"
+            )
             settings = MIDASSettings.with_defaults()
 
         return cls(settings=settings, load_result=load_result)
@@ -95,7 +100,10 @@ class ApplicationState:
         """Create application state with default settings (no file load)."""
         return cls(
             settings=MIDASSettings.with_defaults(),
-            load_result=LoadResult(success=True, warnings=["Using default settings (no configuration file loaded)."]),
+            load_result=LoadResult(
+                success=True,
+                warnings=["Using default settings (no configuration file loaded)."],
+            ),
         )
 
     @property
@@ -121,7 +129,9 @@ class ApplicationState:
             lines.append("[green]Configuration loaded successfully![/green]")
             lines.append(f"  Facility types: {self.load_result.facility_types_loaded}")
             lines.append(f"  System types: {self.load_result.system_types_loaded}")
-            lines.append(f"  Installation locations: {self.load_result.installation_locations_loaded}")
+            lines.append(
+                f"  Installation locations: {self.load_result.installation_locations_loaded}"
+            )
         else:
             lines.append("[red]Configuration load failed![/red]")
 
@@ -140,15 +150,7 @@ class ApplicationState:
         return "\n".join(lines)
 
     def reload(self, config_path: Path | None = None) -> "ApplicationState":
-        """Reload configuration from file.
-
-        Args:
-            config_path: Path to configuration file. If None, uses default.
-
-        Returns:
-            New ApplicationState with reloaded configuration.
-
-        """
+        """Replace state by running ``initialize`` again (see ``config_path`` there)."""
         return ApplicationState.initialize(config_path)
 
 
@@ -157,12 +159,7 @@ _app_state: ApplicationState | None = None
 
 
 def get_app_state() -> ApplicationState:
-    """Get or create the global application state.
-
-    Returns:
-        The global ApplicationState instance.
-
-    """
+    """Return the process-wide singleton, creating it with ``initialize()`` if needed."""
     global _app_state
     if _app_state is None:
         _app_state = ApplicationState.initialize()
@@ -170,12 +167,7 @@ def get_app_state() -> ApplicationState:
 
 
 def set_app_state(state: ApplicationState) -> None:
-    """Set the global application state.
-
-    Args:
-        state: The ApplicationState to set as global.
-
-    """
+    """Replace the process-wide singleton (tests and advanced CLI flows)."""
     global _app_state
     _app_state = state
 

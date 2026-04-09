@@ -1,17 +1,21 @@
 """Immutable configuration settings for MIDAS.
 
-Configuration is loaded once and passed to services via dependency injection.
+Settings are normally loaded once at CLI startup into :func:`get_app_state`.
+Callers may also pass an explicit ``MIDASSettings`` instance into generators,
+exporters, and loaders for tests or headless use.
 """
 
 import random
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from .reference_data import FacilityType, InstallationLocation, SystemType
-
-if TYPE_CHECKING:
-    from .distributions import BaseDistribution, ProbabilityDistribution
+from src.models import FacilityType, InstallationLocation, SystemType, WorkOrderText
+from src.models.distributions import (
+    BathtubCurveDistribution,
+    DistributionBase,
+    WeightedProbabilityDistribution,
+    WeightedProbabilitySegment,
+)
 
 
 @dataclass(frozen=True)
@@ -36,8 +40,7 @@ class SimulationSettings:
     facility_condition_randomly_degrades_chance: int = 35
 
     def get_random_facility_count(self):
-        """Get a random number in the configured range to use for Facility generation.
-        """
+        """Get a random number in the configured range to use for Facility generation."""
         return random.randint(*self.facilities_per_installation)
 
     def get_dependency_chain_vertical_positions(self) -> list[str]:
@@ -103,31 +106,25 @@ class SimulationDistributions:
     condition indices, ages, and resiliency grades.
     """
 
-    condition_index: "ProbabilityDistribution | None" = None
-    age: "ProbabilityDistribution | None" = None
-    grade: "ProbabilityDistribution | None" = None
-    work_order_count: "BaseDistribution | None" = None
-    work_order_status: "ProbabilityDistribution | None" = None
-    work_order_priority: "ProbabilityDistribution | None" = None
-    work_order_requesting_organization: "ProbabilityDistribution | None" = None
+    condition_index: WeightedProbabilityDistribution | None = None
+    age: WeightedProbabilityDistribution | None = None
+    grade: WeightedProbabilityDistribution | None = None
+    work_order_count: DistributionBase | None = None
+    work_order_status: WeightedProbabilityDistribution | None = None
+    work_order_priority: WeightedProbabilityDistribution | None = None
+    work_order_requesting_organization: WeightedProbabilityDistribution | None = None
 
     def __post_init__(self) -> None:
         """Initialize default distributions if not provided."""
-        from .distributions import (
-            BathtubCurveDistribution,
-            ProbabilityDistribution,
-            ProbabilitySegment,
-        )
-
         if self.condition_index is None:
             object.__setattr__(
                 self,
                 "condition_index",
-                ProbabilityDistribution(
+                WeightedProbabilityDistribution(
                     [
-                        ProbabilitySegment(7, "1-50"),
-                        ProbabilitySegment(88, "50-85"),
-                        ProbabilitySegment(5, "85-100"),
+                        WeightedProbabilitySegment(7, "1-50"),
+                        WeightedProbabilitySegment(88, "50-85"),
+                        WeightedProbabilitySegment(5, "85-100"),
                     ]
                 ),
             )
@@ -136,12 +133,12 @@ class SimulationDistributions:
             object.__setattr__(
                 self,
                 "age",
-                ProbabilityDistribution(
+                WeightedProbabilityDistribution(
                     [
-                        ProbabilitySegment(50, "20-40"),
-                        ProbabilitySegment(20, "10-20"),
-                        ProbabilitySegment(20, "41-80"),
-                        ProbabilitySegment(10, "0-9"),
+                        WeightedProbabilitySegment(50, "20-40"),
+                        WeightedProbabilitySegment(20, "10-20"),
+                        WeightedProbabilitySegment(20, "41-80"),
+                        WeightedProbabilitySegment(10, "0-9"),
                     ]
                 ),
             )
@@ -150,12 +147,12 @@ class SimulationDistributions:
             object.__setattr__(
                 self,
                 "grade",
-                ProbabilityDistribution(
+                WeightedProbabilityDistribution(
                     [
-                        ProbabilitySegment(52, "1"),
-                        ProbabilitySegment(32, "2"),
-                        ProbabilitySegment(12, "3"),
-                        ProbabilitySegment(4, "4"),
+                        WeightedProbabilitySegment(52, "1"),
+                        WeightedProbabilitySegment(32, "2"),
+                        WeightedProbabilitySegment(12, "3"),
+                        WeightedProbabilitySegment(4, "4"),
                     ]
                 ),
             )
@@ -167,12 +164,12 @@ class SimulationDistributions:
             object.__setattr__(
                 self,
                 "work_order_status",
-                ProbabilityDistribution(
+                WeightedProbabilityDistribution(
                     [
-                        ProbabilitySegment(8, "Submitted"),
-                        ProbabilitySegment(14, "Approved"),
-                        ProbabilitySegment(26, "In Progress"),
-                        ProbabilitySegment(52, "Completed"),
+                        WeightedProbabilitySegment(8, "Submitted"),
+                        WeightedProbabilitySegment(14, "Approved"),
+                        WeightedProbabilitySegment(26, "In Progress"),
+                        WeightedProbabilitySegment(52, "Completed"),
                     ]
                 ),
             )
@@ -181,12 +178,12 @@ class SimulationDistributions:
             object.__setattr__(
                 self,
                 "work_order_priority",
-                ProbabilityDistribution(
+                WeightedProbabilityDistribution(
                     [
-                        ProbabilitySegment(7, "Emergency"),
-                        ProbabilitySegment(18, "Urgent"),
-                        ProbabilitySegment(50, "Routine"),
-                        ProbabilitySegment(25, "Maintenance"),
+                        WeightedProbabilitySegment(7, "Emergency"),
+                        WeightedProbabilitySegment(18, "Urgent"),
+                        WeightedProbabilitySegment(50, "Routine"),
+                        WeightedProbabilitySegment(25, "Maintenance"),
                     ]
                 ),
             )
@@ -195,14 +192,14 @@ class SimulationDistributions:
             object.__setattr__(
                 self,
                 "work_order_requesting_organization",
-                ProbabilityDistribution(
+                WeightedProbabilityDistribution(
                     [
-                        ProbabilitySegment(1, "J1"),
-                        ProbabilitySegment(1, "J2"),
-                        ProbabilitySegment(1, "J3"),
-                        ProbabilitySegment(1, "J4"),
-                        ProbabilitySegment(1, "J5"),
-                        ProbabilitySegment(1, "J6"),
+                        WeightedProbabilitySegment(1, "J1"),
+                        WeightedProbabilitySegment(1, "J2"),
+                        WeightedProbabilitySegment(1, "J3"),
+                        WeightedProbabilitySegment(1, "J4"),
+                        WeightedProbabilitySegment(1, "J5"),
+                        WeightedProbabilitySegment(1, "J6"),
                     ]
                 ),
             )
@@ -219,7 +216,9 @@ class MIDASSettings:
     degradation: DegradationSettings = field(default_factory=DegradationSettings)
     simulation: SimulationSettings = field(default_factory=SimulationSettings)
     output: OutputSettings = field(default_factory=OutputSettings)
-    distributions: SimulationDistributions = field(default_factory=SimulationDistributions)
+    distributions: SimulationDistributions = field(
+        default_factory=SimulationDistributions
+    )
 
     # Reference data (loaded from Excel)
     facility_types: dict[int, FacilityType] = field(default_factory=dict)
@@ -227,8 +226,8 @@ class MIDASSettings:
     installation_locations: list[InstallationLocation] = field(default_factory=list)
     config_workbook_path: Path | None = None
 
-    # Pre-loaded work-order text (system_type_title_lower -> list of triplets)
-    work_order_text_cache: dict[str, list[tuple[str, str, str]]] = field(default_factory=dict)
+    # Pre-loaded work-order text (system_type_title_lower -> list of typed samples)
+    work_order_text_cache: dict[str, list[WorkOrderText]] = field(default_factory=dict)
 
     def get_facility_type(self, key: int) -> FacilityType | None:
         """Get facility type by key."""
@@ -238,24 +237,36 @@ class MIDASSettings:
         """Get system type by key."""
         return self.system_types.get(key)
 
-    def get_random_facility_type(self, excluded_keys: list[int] | None = None) -> FacilityType | None:
+    def get_random_facility_type(
+        self, excluded_keys: list[int] | None = None
+    ) -> FacilityType | None:
         """Get a random facility type, optionally excluding certain keys."""
         excluded = excluded_keys or []
-        available = [ft for ft in self.facility_types.values() if ft.key not in excluded]
+        available = [
+            ft for ft in self.facility_types.values() if ft.key not in excluded
+        ]
         return random.choice(available) if available else None
 
-    def get_random_system_type_for_facility(self, facility_key: int) -> "SystemType | None":
+    def get_random_system_type_for_facility(
+        self, facility_key: int
+    ) -> "SystemType | None":
         """Get a random system type that belongs to the given facility type."""
         system_types = self.get_system_types_for_facility(facility_key)
         return random.choice(system_types) if system_types else None
 
     def get_system_types_for_facility(self, facility_key: int) -> list[SystemType]:
         """Get all system types that belong to a facility type."""
-        return [st for st in self.system_types.values() if facility_key in st.facility_keys]
+        return [
+            st for st in self.system_types.values() if facility_key in st.facility_keys
+        ]
 
     def get_random_location(self) -> InstallationLocation | None:
         """Get a random location from loaded installation locations."""
-        return random.choice(self.installation_locations) if self.installation_locations else None
+        return (
+            random.choice(self.installation_locations)
+            if self.installation_locations
+            else None
+        )
 
     def get_random_work_order_requesting_organization(self) -> str | None:
         """Get a random requesting organization from configured distribution."""
@@ -263,8 +274,8 @@ class MIDASSettings:
         text = str(sampled).strip() if sampled is not None else ""
         return text or None
 
-    def sample_work_order_text(self, system_type: str | None) -> tuple[str, str, str] | None:
-        """Return a random work-order text triplet from the pre-loaded cache."""
+    def sample_work_order_text(self, system_type: str | None) -> WorkOrderText | None:
+        """Return a random work-order text sample from the pre-loaded cache."""
         if not self.work_order_text_cache:
             return None
 
@@ -281,21 +292,6 @@ class MIDASSettings:
     def with_defaults(cls) -> "MIDASSettings":
         """Create settings with all defaults (no reference data)."""
         return cls()
-
-    @classmethod
-    def from_excel(cls, path: Path) -> "MIDASSettings":
-        """Load settings from Excel configuration file.
-
-        Args:
-            path: Path to midas_config_values.xlsx
-
-        Returns:
-            Configured MIDASSettings instance.
-
-        """
-        from .loader import load_settings_from_excel
-
-        return load_settings_from_excel(path)
 
     @classmethod
     def default_config_path(cls) -> Path:

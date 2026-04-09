@@ -1,3 +1,5 @@
+"""Configure the root logger for CLI and library use (level from ``LOG_LEVEL``)."""
+
 import logging
 import os
 import sys

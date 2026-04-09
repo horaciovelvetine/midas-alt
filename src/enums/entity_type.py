@@ -1,8 +1,10 @@
+"""Domain entity kinds used in runtime summaries and hierarchy traversal."""
+
 from enum import Enum
 
 
 class EntityType(Enum):
-    """Type of domain entity"""
+    """Installation, facility, or system entity discriminator."""
 
     INSTALLATION = "installation"
     FACILITY = "facility"

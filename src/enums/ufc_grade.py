@@ -1,3 +1,5 @@
+"""UFC 4-141-03 resiliency grades (G1–G4) for facilities."""
+
 from enum import Enum
 
 

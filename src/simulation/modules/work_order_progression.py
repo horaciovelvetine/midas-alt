@@ -7,14 +7,14 @@ from typing import TYPE_CHECKING
 
 from ...enums.entity_type import EntityType
 from ...enums.work_order import WO_Priority, WO_Status
-from .base import Base, ModuleEvent
+from .base import ModuleEvent, SimulationModuleBase
 
 if TYPE_CHECKING:
     from ...models import WorkOrder, System
     from ..runtime.session import SimulationSession
 
 
-class WorkOrderProgressionModule(Base):
+class WorkOrderProgressionModule(SimulationModuleBase):
     """Progress work orders through lifecycle and repair systems on completion."""
 
     def __init__(self, seed: int | None = None) -> None:
@@ -31,9 +31,7 @@ class WorkOrderProgressionModule(Base):
                 continue
 
             # Track how long this work order has been open
-            self._work_order_ages[wo.id] = (
-                self._work_order_ages.get(wo.id, 0) + 1
-            )
+            self._work_order_ages[wo.id] = self._work_order_ages.get(wo.id, 0) + 1
 
             # Progress work order through lifecycle
             old_status = wo.status
@@ -111,7 +109,9 @@ class WorkOrderProgressionModule(Base):
         repair_amount = self._calculate_repair_amount(wo)
 
         old_ci = system.condition_index
-        system.condition_index = min(100.0, round(system.condition_index + repair_amount, 2))
+        system.condition_index = min(
+            100.0, round(system.condition_index + repair_amount, 2)
+        )
 
         return ModuleEvent(
             code="system_repaired",

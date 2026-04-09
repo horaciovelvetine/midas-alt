@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 import copy
+import warnings
 from dataclasses import dataclass, field
 from datetime import date
 
-from ...config.settings import MIDASSettings
-from ...enums.entity_type import EntityType
-from ...enums.work_order import WO_Status
-from ...models import Facility, Installation, System
-from ...models.work_order import WorkOrder
-from ..generation_result import GenerationResult
-from ..modules.base import Base, ModuleEvent
-from .clock import SimulationClock, TickSize
-from .history import ConditionHistoryExportAdapter, ConditionHistoryStore
+from src.config.settings import MIDASSettings
+from src.enums.entity_type import EntityType
+from src.enums.work_order import WO_Status
+from src.models import DataStore, Facility, Installation, System, WorkOrder
+from src.simulation.modules.base import ModuleEvent, SimulationModuleBase
+from src.simulation.runtime.clock import SimulationClock, TickSize
+from src.simulation.runtime.history import (
+    ConditionHistoryExportAdapter,
+    ConditionHistoryStore,
+)
 
 _OPEN_WORK_ORDER_STATUSES = {
     WO_Status.SUBMITTED,
@@ -51,7 +53,7 @@ class EntityRuntimeState:
         return "OPERATIONAL"
 
 
-class CriticalStatePausePolicy(Base):
+class CriticalStatePausePolicy(SimulationModuleBase):
     """Pause the simulation when an entity newly becomes critical."""
 
     def apply(self, session: SimulationSession) -> list[ModuleEvent]:
@@ -88,27 +90,41 @@ class CriticalStatePausePolicy(Base):
 class SimulationSession:
     """Holds all mutable runtime state for an active simulation."""
 
-    result: GenerationResult
+    result: DataStore
     settings: MIDASSettings
     clock: SimulationClock
     history: ConditionHistoryStore = field(default_factory=ConditionHistoryStore)
-    modules: list[Base] = field(default_factory=list)
-    pause_policies: list[Base] = field(default_factory=lambda: [CriticalStatePausePolicy()])
+    modules: list[SimulationModuleBase] = field(default_factory=list)
+    pause_policies: list[SimulationModuleBase] = field(
+        default_factory=lambda: [CriticalStatePausePolicy()]
+    )
     paused: bool = True
     playback_delay_seconds: float = 0.25
     selected_facility_id: str | None = None
     selected_system_id: str | None = None
     stop_reason: str | None = None
-    critical_entities: set[tuple[EntityType, str]] = field(default_factory=set, repr=False)
-    facilities_by_id: dict[str, Facility] = field(default_factory=dict, init=False, repr=False)
-    systems_by_id: dict[str, System] = field(default_factory=dict, init=False, repr=False)
-    systems_by_facility: dict[str, list[System]] = field(default_factory=dict, init=False, repr=False)
-    work_orders_by_system: dict[str, list[WorkOrder]] = field(default_factory=dict, init=False, repr=False)
+    critical_entities: set[tuple[EntityType, str]] = field(
+        default_factory=set, repr=False
+    )
+    facilities_by_id: dict[str, Facility] = field(
+        default_factory=dict, init=False, repr=False
+    )
+    systems_by_id: dict[str, System] = field(
+        default_factory=dict, init=False, repr=False
+    )
+    systems_by_facility: dict[str, list[System]] = field(
+        default_factory=dict, init=False, repr=False
+    )
+    work_orders_by_system: dict[str, list[WorkOrder]] = field(
+        default_factory=dict, init=False, repr=False
+    )
 
     def __post_init__(self) -> None:
         """Validate and initialize runtime state."""
         if len(self.result.installations) != 1:
-            raise ValueError("SimulationSession requires exactly one active installation")
+            raise ValueError(
+                "SimulationSession requires exactly one active installation"
+            )
         self.rebuild_indexes()
         self.sync_age_caches()
         self.recalculate_aggregates()
@@ -121,36 +137,68 @@ class SimulationSession:
         )
         self._run_pause_policies()
 
+    @property
+    def data(self) -> DataStore:
+        """Active installation dataset (same object as ``result``; preferred name)."""
+        return self.result
+
     @classmethod
-    def from_generation_result(
+    def from_data_store(
         cls,
-        result: GenerationResult,
+        data: DataStore,
         settings: MIDASSettings,
         installation_id: str | None = None,
         start_date: date | None = None,
-        modules: list[Base] | None = None,
-        pause_policies: list[Base] | None = None,
+        modules: list[SimulationModuleBase] | None = None,
+        pause_policies: list[SimulationModuleBase] | None = None,
     ) -> SimulationSession:
-        """Create a session from a loaded or generated result set."""
-        selected_result = cls.select_installation_result(result, installation_id=installation_id)
+        """Create a session from a loaded or generated :class:`DataStore`."""
+        selected = cls.select_installation_result(data, installation_id=installation_id)
         return cls(
-            result=selected_result,
+            result=selected,
             settings=settings,
             clock=SimulationClock(current_date=start_date or date.today()),
             modules=modules or [],
             pause_policies=pause_policies or [CriticalStatePausePolicy()],
         )
 
+    @classmethod
+    def from_generation_result(
+        cls,
+        result: DataStore,
+        settings: MIDASSettings,
+        installation_id: str | None = None,
+        start_date: date | None = None,
+        modules: list[SimulationModuleBase] | None = None,
+        pause_policies: list[SimulationModuleBase] | None = None,
+    ) -> SimulationSession:
+        """Deprecated alias for :meth:`from_data_store`."""
+        warnings.warn(
+            "SimulationSession.from_generation_result is deprecated; use from_data_store",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return cls.from_data_store(
+            result,
+            settings=settings,
+            installation_id=installation_id,
+            start_date=start_date,
+            modules=modules,
+            pause_policies=pause_policies,
+        )
+
     @staticmethod
     def select_installation_result(
-        result: GenerationResult,
+        result: DataStore,
         installation_id: str | None = None,
-    ) -> GenerationResult:
+    ) -> DataStore:
         """Return a deep-copied single-installation subset of a result set."""
         if not result.installations:
             raise ValueError("No installations are available to simulate")
         if installation_id is None and len(result.installations) > 1:
-            raise ValueError("installation_id is required when multiple installations are available")
+            raise ValueError(
+                "installation_id is required when multiple installations are available"
+            )
 
         selected_installation = None
         if installation_id is None:
@@ -163,21 +211,30 @@ class SimulationSession:
         if selected_installation is None:
             raise ValueError(f"Unknown installation_id: {installation_id}")
 
-        facility_ids = {facility.id for facility in result.facilities if facility.installation_id == selected_installation.id}
-        facilities = [facility for facility in result.facilities if facility.id in facility_ids]
-        systems = [system for system in result.systems if system.facility_id in facility_ids]
+        facility_ids = {
+            facility.id
+            for facility in result.facilities
+            if facility.installation_id == selected_installation.id
+        }
+        facilities = [
+            facility for facility in result.facilities if facility.id in facility_ids
+        ]
+        systems = [
+            system for system in result.systems if system.facility_id in facility_ids
+        ]
         system_ids = {system.id for system in systems}
         work_orders = [
             work_order
             for work_order in result.work_orders
-            if work_order.installation_id == selected_installation.id or work_order.system_id in system_ids
+            if work_order.installation_id == selected_installation.id
+            or work_order.system_id in system_ids
         ]
         if not work_orders:
             for system in systems:
                 work_orders.extend(system.work_orders)
 
         return copy.deepcopy(
-            GenerationResult(
+            DataStore(
                 installations=[selected_installation],
                 facilities=facilities,
                 systems=systems,
@@ -223,11 +280,15 @@ class SimulationSession:
         self.work_orders_by_system = {}
 
         for system in self.systems:
-            self.systems_by_facility.setdefault(system.facility_id or "", []).append(system)
+            self.systems_by_facility.setdefault(system.facility_id or "", []).append(
+                system
+            )
         for work_order in self.work_orders:
             if not work_order.system_id:
                 continue
-            self.work_orders_by_system.setdefault(work_order.system_id, []).append(work_order)
+            self.work_orders_by_system.setdefault(work_order.system_id, []).append(
+                work_order
+            )
 
         for system in self.systems:
             system.work_orders = list(self.work_orders_by_system.get(system.id, []))
@@ -235,9 +296,13 @@ class SimulationSession:
     def sync_age_caches(self) -> None:
         """Update cached age values to match the simulated date."""
         for facility in self.facilities:
-            facility._age_months = _calculate_age_months(facility.year_constructed, self.current_date)
+            facility._age_months = _calculate_age_months(
+                facility.year_constructed, self.current_date
+            )
         for system in self.systems:
-            system._age_months = _calculate_age_months(system.year_constructed, self.current_date)
+            system._age_months = _calculate_age_months(
+                system.year_constructed, self.current_date
+            )
 
     def recalculate_aggregates(self) -> None:
         """Recompute facility and installation aggregate condition indices."""
@@ -322,10 +387,20 @@ class SimulationSession:
     def get_system_state(self, system_id: str) -> EntityRuntimeState:
         """Return the runtime state for a system."""
         system = self.systems_by_id[system_id]
-        open_work_orders = [work_order for work_order in system.work_orders if work_order.status in _OPEN_WORK_ORDER_STATUSES]
-        mission_work_orders = [work_order for work_order in open_work_orders if work_order.impacts_mission]
+        open_work_orders = [
+            work_order
+            for work_order in system.work_orders
+            if work_order.status in _OPEN_WORK_ORDER_STATUSES
+        ]
+        mission_work_orders = [
+            work_order for work_order in open_work_orders if work_order.impacts_mission
+        ]
         condition_index = system.condition_index
-        degraded = condition_index is not None and condition_index <= self.settings.degradation.condition_index_degraded_threshold
+        degraded = (
+            condition_index is not None
+            and condition_index
+            <= self.settings.degradation.condition_index_degraded_threshold
+        )
         inoperable = condition_index is not None and condition_index <= 0
         mission_blocked = inoperable and bool(mission_work_orders)
         return EntityRuntimeState(
@@ -342,18 +417,26 @@ class SimulationSession:
     def get_facility_state(self, facility_id: str) -> EntityRuntimeState:
         """Return the runtime state for a facility."""
         facility = self.facilities_by_id[facility_id]
-        child_states = [self.get_system_state(system.id) for system in self.systems_by_facility.get(facility.id, [])]
+        child_states = [
+            self.get_system_state(system.id)
+            for system in self.systems_by_facility.get(facility.id, [])
+        ]
         open_work_orders = sum(state.open_work_orders for state in child_states)
-        mission_work_orders = sum(state.mission_impacting_open_work_orders for state in child_states)
+        mission_work_orders = sum(
+            state.mission_impacting_open_work_orders for state in child_states
+        )
         condition_index = facility.condition_index
         degraded = (
             condition_index is not None
-            and condition_index <= self.settings.degradation.condition_index_degraded_threshold
+            and condition_index
+            <= self.settings.degradation.condition_index_degraded_threshold
         ) or any(state.degraded for state in child_states)
         inoperable = (condition_index is not None and condition_index <= 0) or any(
             state.inoperable for state in child_states
         )
-        mission_blocked = any(state.mission_blocked for state in child_states) or (inoperable and mission_work_orders > 0)
+        mission_blocked = any(state.mission_blocked for state in child_states) or (
+            inoperable and mission_work_orders > 0
+        )
         return EntityRuntimeState(
             entity_id=facility.id,
             entity_type=EntityType.FACILITY,
@@ -369,18 +452,25 @@ class SimulationSession:
 
     def get_installation_state(self) -> EntityRuntimeState:
         """Return the runtime state for the active installation."""
-        facility_states = [self.get_facility_state(facility.id) for facility in self.facilities]
+        facility_states = [
+            self.get_facility_state(facility.id) for facility in self.facilities
+        ]
         open_work_orders = sum(state.open_work_orders for state in facility_states)
-        mission_work_orders = sum(state.mission_impacting_open_work_orders for state in facility_states)
+        mission_work_orders = sum(
+            state.mission_impacting_open_work_orders for state in facility_states
+        )
         condition_index = self.installation.condition_index
         degraded = (
             condition_index is not None
-            and condition_index <= self.settings.degradation.condition_index_degraded_threshold
+            and condition_index
+            <= self.settings.degradation.condition_index_degraded_threshold
         ) or any(state.degraded for state in facility_states)
         inoperable = (condition_index is not None and condition_index <= 0) or any(
             state.inoperable for state in facility_states
         )
-        mission_blocked = any(state.mission_blocked for state in facility_states) or (inoperable and mission_work_orders > 0)
+        mission_blocked = any(state.mission_blocked for state in facility_states) or (
+            inoperable and mission_work_orders > 0
+        )
         return EntityRuntimeState(
             entity_id=self.installation.id,
             entity_type=EntityType.INSTALLATION,
@@ -391,13 +481,17 @@ class SimulationSession:
             open_work_orders=open_work_orders,
             mission_impacting_open_work_orders=mission_work_orders,
             child_degraded_count=sum(1 for state in facility_states if state.degraded),
-            child_inoperable_count=sum(1 for state in facility_states if state.inoperable),
+            child_inoperable_count=sum(
+                1 for state in facility_states if state.inoperable
+            ),
         )
 
     def iter_runtime_states(self) -> list[EntityRuntimeState]:
         """Return runtime states in evaluation order."""
         states = [self.get_system_state(system.id) for system in self.systems]
-        states.extend(self.get_facility_state(facility.id) for facility in self.facilities)
+        states.extend(
+            self.get_facility_state(facility.id) for facility in self.facilities
+        )
         states.append(self.get_installation_state())
         return states
 
@@ -409,7 +503,9 @@ class SimulationSession:
             if work_order.status is None:
                 counts["Unknown"] += 1
             else:
-                counts[work_order.status.value] = counts.get(work_order.status.value, 0) + 1
+                counts[work_order.status.value] = (
+                    counts.get(work_order.status.value, 0) + 1
+                )
         return counts
 
     def condition_summary(self) -> dict[str, int]:
@@ -423,7 +519,9 @@ class SimulationSession:
 
     def export_history_tables(self) -> dict[str, object]:
         """Return table-like history outputs for later export integration."""
-        return ConditionHistoryExportAdapter(self.history, settings=self.settings).create_tables(
+        return ConditionHistoryExportAdapter(
+            self.history, settings=self.settings
+        ).create_tables(
             installation=self.installation,
             facilities=self.facilities,
             systems=self.systems,
@@ -453,13 +551,19 @@ class SimulationSession:
 
 def _average_condition_index(entities: list[Facility] | list[System]) -> float | None:
     """Return the rounded average condition index for a list of entities."""
-    values = [float(entity.condition_index) for entity in entities if entity.condition_index is not None]
+    values = [
+        float(entity.condition_index)
+        for entity in entities
+        if entity.condition_index is not None
+    ]
     if not values:
         return None
     return round(sum(values) / len(values), 2)
 
 
-def _calculate_age_months(year_constructed: int | None, current_date: date) -> int | None:
+def _calculate_age_months(
+    year_constructed: int | None, current_date: date
+) -> int | None:
     """Return age in whole months relative to the simulated date."""
     if year_constructed is None:
         return None

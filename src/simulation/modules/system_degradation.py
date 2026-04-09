@@ -6,14 +6,13 @@ import math
 import random
 from typing import TYPE_CHECKING
 
-from ...enums.entity_type import EntityType
-from ..runtime.clock import TickSize, TickUnit
-from .base import Base, ModuleEvent
+from src.enums.entity_type import EntityType
+from src.simulation.modules.base import ModuleEvent, SimulationModuleBase
+from src.simulation.runtime.clock import TickSize, TickUnit
 
 if TYPE_CHECKING:
-    from ...config.reference_data import SystemType
-    from ...models import System
-    from ..runtime.session import SimulationSession
+    from src.models import System, SystemType
+    from src.simulation.runtime.session import SimulationSession
 
 _STATE_ORDER = ("excellent", "good", "fair", "poor", "critical", "failed")
 _STATE_RATE_MULTIPLIERS = {
@@ -36,7 +35,7 @@ _AGE_RATIO_RATE_POINTS = (
 _EPSILON = 1e-9
 
 
-class SystemDegradationModule(Base):
+class SystemDegradationModule(SimulationModuleBase):
     """Passively degrade systems based on age relative to service life."""
 
     def __init__(self, seed: int | None = None) -> None:
@@ -51,6 +50,7 @@ class SystemDegradationModule(Base):
         if tick_years <= 0:
             return []
 
+        # pulls value from MIDASSettings
         degraded_threshold = (
             session.settings.degradation.condition_index_degraded_threshold
         )
@@ -69,6 +69,7 @@ class SystemDegradationModule(Base):
 
             age_months = system.age_months
             life_expectancy_months = system_type.life_expectancy_months
+
             if age_months is None or life_expectancy_months <= 0:
                 self._clear_tracking(system.id)
                 continue
@@ -110,11 +111,13 @@ class SystemDegradationModule(Base):
             annual_rate = _annual_transition_rate(
                 age_ratio=age_ratio, current_state=state
             )
+
             if annual_rate <= 0:
                 break
 
             remaining_exposure = self._remaining_transition_exposure[system.id]
             available_exposure = annual_rate * remaining_years
+
             if available_exposure + _EPSILON < remaining_exposure:
                 self._remaining_transition_exposure[system.id] = (
                     remaining_exposure - available_exposure
@@ -155,9 +158,9 @@ class SystemDegradationModule(Base):
         return events
 
     # ! ======================================================================================================>
-    # ! HELPERS / UTILS 
+    # ! HELPERS / UTILS
     # ! ======================================================================================================>
-    
+
     def _resolve_system_type(
         self, session: SimulationSession, system: System
     ) -> SystemType | None:

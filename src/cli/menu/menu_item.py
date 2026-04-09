@@ -1,22 +1,12 @@
+"""Single selectable row in a CLI menu (label, action, visibility flags)."""
+
 from collections.abc import Callable
 from dataclasses import dataclass
 
 
 @dataclass
 class MenuItem:
-    """Represents a menu option with its label and action.
-
-    Attributes:
-        label: Display text for the menu item.
-        action: Callable to execute when item is selected.
-        exit_menu: If True, exits the menu after action.
-        enabled: If False, item is disabled (not selectable).
-        visible: If False, item is hidden from display.
-        separator_before: If True, adds a separator line before this item.
-        shortcut: Optional keyboard shortcut hint (e.g., "Ctrl+C").
-        description: Optional description text that summarizes what selecting this option entails.
-
-    """
+    """One menu row: label, callback, and display/selection flags."""
 
     label: str
     action: Callable[[], None]

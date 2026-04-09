@@ -1,3 +1,5 @@
+"""Display a Rich menu, run selected actions, and handle navigation."""
+
 import logging
 import sys
 
@@ -91,7 +93,9 @@ class MenuHandler:
         # Calculate padding for bottom justification
         # Get terminal height, accounting for the panel border and prompt
         try:
-            terminal_height = console.height or 24  # Default to 24 if height unavailable
+            terminal_height = (
+                console.height or 24
+            )  # Default to 24 if height unavailable
             # Estimate menu height: menu lines + panel borders (2) + title (1) + prompt area (2)
             menu_height = len(menu_lines) + 5
             # Add padding to push content to bottom
@@ -102,7 +106,13 @@ class MenuHandler:
             padding = "\n"
 
         console.print(padding)
-        console.print(Panel(menu_text, title=self.config.title, border_style=self.config.border_style))
+        console.print(
+            Panel(
+                menu_text,
+                title=self.config.title,
+                border_style=self.config.border_style,
+            )
+        )
         if self.config.is_root_menu:
             console.print("[dim]q or quit · Ctrl-C quits[/dim]")
         else:

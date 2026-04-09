@@ -1,3 +1,5 @@
+"""Build Rich CLI menus from a fluent, declarative API."""
+
 from collections.abc import Callable
 
 from .menu_config import MenuConfig
@@ -65,7 +67,9 @@ class MenuBuilder:
         if self._config.items:
             # Mark the next item to have a separator before it
             # We'll add a placeholder item for the separator
-            separator_item = MenuItem(label="", action=lambda: None, visible=False, separator_before=True)
+            separator_item = MenuItem(
+                label="", action=lambda: None, visible=False, separator_before=True
+            )
             self._config.items.append(separator_item)
         return self
 

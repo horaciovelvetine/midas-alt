@@ -33,7 +33,7 @@ On startup, MIDAS loads `src/config/midas_config_values.xlsx` (via `ApplicationS
 
 1. Launch MIDAS and choose **Run Time Simulation**.
 2. Either:
-   - **Load** a normalized CSV **directory** or **XLSX** file produced by this project’s export pipeline (`src/simulation/export/`), or
+   - **Load** a normalized CSV **directory** or **XLSX** file produced by this project’s IO/export pipeline (`src/io/`), or
    - **Generate** a single installation in memory.
 3. If the loaded dataset has multiple installations, pick one (`installation_id` is required for multi-installation results).
 4. Use the live dashboard (keyboard-driven).
@@ -43,7 +43,7 @@ On startup, MIDAS loads `src/config/midas_config_values.xlsx` (via `ApplicationS
 **Keys** (see in-app help with `h`):
 
 | Keys | Action |
-|------|--------|
+| --- | --- |
 | `space` / `p` | Pause or resume |
 | `n` | Single-step one tick (then pause) |
 | `t` | Cycle tick size: day → week → month → year |
@@ -62,16 +62,15 @@ On startup, MIDAS loads `src/config/midas_config_values.xlsx` (via `ApplicationS
 ### `src/functions`
 
 - `generate_id.py`: UUID-style IDs for model dataclasses.
+- `create_distribution_from_spec.py`: declarative distribution factory used by workbook loading.
 
 ### `src/config`
 
 - `functions/configure_logging.py`: root logging setup (`LOG_LEVEL` env, quieter pandas/openpyxl loggers).
 - `settings.py`: `MIDASSettings` and nested groups (`DegradationSettings`, `SimulationSettings`, `OutputSettings`, `SimulationDistributions`).
-- `loader.py`: Excel parsing into settings and reference data; builds **`work_order_text_cache`** at load time.
-- `distributions.py`: weighted **Probability** distributions, **EventRate** curves (normal, bathtub, piecewise), `DistributionContext`, Poisson-style event counts.
 - `app_state.py`: `ApplicationState`, `LoadResult`, `get_app_state` / `set_app_state` singleton helpers.
 - `display.py`: Rich tables/panels for config summaries.
-- `reference_data.py`: `FacilityType`, `SystemType`, `InstallationLocation`, `WorkOrderText`.
+- `src/config` now owns application settings, runtime config state, and config display only; workbook loading and external-file IO live under `src/io`, while domain/reference-data and distribution types live under `src/models`.
 
 ### `src/cli`
 
@@ -79,29 +78,38 @@ On startup, MIDAS loads `src/config/midas_config_values.xlsx` (via `ApplicationS
 - `menu/`: `MenuBuilder`, `MenuHandler`, `MenuItem`, `menu_factory` (main / simulation / configuration menus).
 - `handlers/config_handlers.py`: view summaries, view config values, reload workbook.
 - `handlers/simulate_handlers.py`: runtime sim entry (load/generate), hierarchy browser, quick generate, export wizard, facility+system table view.
-- `simulation_shell.py`: Rich **Live** dashboard, raw terminal key polling.
+- `simulation_shell.py`: Rich **Live** loop and key polling; `simulation_shell_panels.py`: dashboard renderables and inspect/mission-alert prompts.
 - `utils/`: `DisplayHelper`, `InputHelper`, `NavigationHelper`.
 
 ### `src/models`
 
-- `installation.py`, `facility.py`, `system.py`, `work_order.py`, `dependency_position.py` (`vertical_position` + `group_ids` for dependency graph semantics).
+- `domain/`: `Installation`, `Facility`, `System`, `WorkOrder`, `DependencyPosition`, `FacilityType`, `SystemType`, `InstallationLocation`, `WorkOrderText`, `DataStore`.
+- `distributions/`: `DistributionContext`, `DistributionBase`, `EventRateDistribution`, `WeightedProbabilityDistribution`, `WeightedProbabilitySegment`, `NormalCurveDistribution`, `BathtubCurveDistribution`, `PiecewiseCurveDistribution`.
+- `src/models/__init__.py`: public re-exports used across the app so callers can usually import from `src.models`.
 
 ### `src/enums`
 
 - `entity_type.py`, `ufc_grade.py`, `work_order.py` (`WO_Status`, `WO_Priority`, `WO_TradeSkill`).
 
+### `src/io`
+
+- `loaders/config_workbook_loader.py`: `ConfigWorkbookLoader` — workbook `.xlsx` → `MIDASSettings` (with `config_workbook_config_values.py` and `config_workbook_work_order_text.py` for sheet parsing).
+- `loaders/simulation_data_loader.py`: `SimulationDataLoader` — normalized CSV directory or XLSX → `DataStore`.
+- `models/data_exporter.py`: `DataExporter` for generated/existing datasets.
+- `models/export_config.py`: `ExportConfig` for output format, layout, and paths (`OutputFileType`, `OutputLayoutSchema`).
+- `models/data_transformer.py`: `DataTransformer` for normalized/denormalized export tables.
+- `file_formatting/`: `CSVFormatter`, `ExcelFormatter`, `BaseFormatter`.
+- `enums/`: `OutputFileType`, `OutputLayoutSchema`.
+
 ### `src/simulation`
 
-- `generator.py`: `DataGenerator` facade over install/facility/system/work-order generators.
-- `generation_result.py`: `GenerationResult` parallel lists (`installations`, `facilities`, `systems`, `work_orders`).
-- `loader.py`: `SimulationDataLoader` — CSV directory or XLSX → `GenerationResult`.
-- `modules/base.py`: `Base.apply(session) -> list[ModuleEvent]`; `ModuleEvent` can set `should_pause`.
+- `data_generation/data_generator.py`: `DataGenerator` facade over install/facility/system/work-order generators.
+- `data_generation/`: `DataGeneratorBase`, `InstallGenerator`, `FacilityGenerator`, `SystemGenerator`, `WorkOrderGenerator`.
+- `modules/base.py`: `SimulationModuleBase.apply(session) -> list[ModuleEvent]`; `ModuleEvent` can set `should_pause`.
 - `modules/system_degradation.py`: passive system CI degradation using discrete condition states, normalized age, and `SystemType.life_expectancy`.
 - `runtime/`: `SimulationClock` / `TickSize` / `TickUnit`, `ConditionHistoryStore`, `ConditionHistoryExportAdapter`, `SimulationSession`, `EntityRuntimeState`, `CriticalStatePausePolicy`.
-- `data_generation/`: `InstallGenerator` → `FacilityGenerator` → `SystemGenerator` → `WorkOrderGenerator`; shared sampling in `data_generator_base.py`.
-- `export/`: `DataExporter`, `ExportConfig`, `DataTransformer`, `OutputFormat` / `OutputLayout`, `CSVFormatter`, `ExcelFormatter`. Optional **`{file_name}_metadata.json`** sidecar when `generate_metadata=True`.
 
-Public re-exports: `src/simulation/__init__.py` (e.g. `DataGenerator`, `SimulationSession`, `ProbabilityDistribution` for API convenience; distribution **implementations** live in `src/config/distributions.py`).
+Public re-exports: `src/io/__init__.py` exposes workbook/data IO helpers, `src/simulation/__init__.py` exposes generation/runtime helpers. Build a runtime session with `SimulationSession.from_data_store(...)` (input is a `DataStore`; `from_generation_result` is a deprecated alias).
 
 ## Generation flow
 
@@ -110,7 +118,7 @@ InstallGenerator
   -> FacilityGenerator
     -> SystemGenerator
       -> WorkOrderGenerator
-        -> GenerationResult
+        -> DataStore
 ```
 
 Notable rules: installation and facility CI are **aggregates** of children; dependency positions are **validated** so non-root facilities have a supporting upstream sharer of a group id; resiliency grades combine **random leaf grades** with **threshold-based roll-up** from dependents; work orders sample status, priority, trade, organization, and text from config/cache.
@@ -119,8 +127,8 @@ Notable rules: installation and facility CI are **aggregates** of children; depe
 
 ```text
 DataGenerator or SimulationDataLoader
-  -> GenerationResult
-  -> SimulationSession.from_generation_result(...)   # one installation, deep-copied slice
+  -> DataStore
+  -> SimulationSession.from_data_store(...)   # one installation, deep-copied slice
   -> SimulationShell (step loop: modules, CI rollup, history, pause policies)
 ```
 
@@ -147,16 +155,16 @@ Exports are written under `{output_directory}/{file_name}/` (see `ExportConfig`)
 ```python
 from pathlib import Path
 
-from src.config import MIDASSettings
-from src.simulation import DataExporter, DataGenerator, SimulationSession
+from src.io import ConfigWorkbookLoader, DataExporter
+from src.simulation import DataGenerator, SimulationSession
 
-settings = MIDASSettings.from_excel(Path("src/config/midas_config_values.xlsx"))
+settings = ConfigWorkbookLoader().load(Path("src/config/midas_config_values.xlsx"))
 generator = DataGenerator(settings=settings, seed=42)
 
 result = generator.generate_installation()
 print(len(result.installations), len(result.facilities), len(result.systems), len(result.work_orders))
 
-session = SimulationSession.from_generation_result(result, settings=settings)
+session = SimulationSession.from_data_store(result, settings=settings)
 session.step()
 history_tables = session.export_history_tables()
 print(history_tables["facility_time_series"].head())
@@ -179,14 +187,14 @@ Load a prior export (directory created by the wizard, named after `file_name`):
 ```python
 from pathlib import Path
 
-from src.config import MIDASSettings
-from src.simulation import SimulationDataLoader, SimulationSession
+from src.io import ConfigWorkbookLoader, SimulationDataLoader
+from src.simulation import SimulationSession
 
-settings = MIDASSettings.from_excel(Path("src/config/midas_config_values.xlsx"))
+settings = ConfigWorkbookLoader().load(Path("src/config/midas_config_values.xlsx"))
 loader = SimulationDataLoader(settings=settings)
 result = loader.load(Path("./output/sample_data"))
 
-session = SimulationSession.from_generation_result(
+session = SimulationSession.from_data_store(
     result,
     settings=settings,
     installation_id=result.installations[0].id,
@@ -198,7 +206,7 @@ print(session.current_date, session.installation.condition_index)
 
 ## Extending runtime simulation
 
-Implement **`Base`** in `src/simulation/modules/` and pass **`modules=[...]`** into **`SimulationSession`**. In **`apply()`**, change **systems** (CI, work orders, etc.); the session updates facility/installation CI, history, and pause evaluation. Use **`session.current_date`** and **`session.clock.tick_size`** to scale work per tick; call **`session.rebuild_indexes()`** if you change hierarchy membership. The interactive CLI already adds **`SystemDegradationModule`** (bands, age vs life expectancy, tick-scaled hazard—see `src/simulation/modules/system_degradation.py`). Module contract, pause behavior, and limitations: [`docs/simulation_system_internals.md`](docs/simulation_system_internals.md).
+Implement **`SimulationModuleBase`** in `src/simulation/modules/` and pass **`modules=[...]`** into **`SimulationSession`**. In **`apply()`**, change **systems** (CI, work orders, etc.); the session updates facility/installation CI, history, and pause evaluation. Use **`session.current_date`** and **`session.clock.tick_size`** to scale work per tick; call **`session.rebuild_indexes()`** if you change hierarchy membership. The interactive CLI already adds **`SystemDegradationModule`** (bands, age vs life expectancy, tick-scaled hazard—see `src/simulation/modules/system_degradation.py`). Module contract, pause behavior, and limitations: [`docs/simulation_system_internals.md`](docs/simulation_system_internals.md).
 
 ## Tests
 

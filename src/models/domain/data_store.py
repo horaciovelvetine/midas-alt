@@ -1,14 +1,16 @@
-"""Typed results for simulation data generation."""
+"""Flat collections of installations, facilities, systems, and work orders."""
 
 from dataclasses import dataclass, field
 
-from ..models import Facility, Installation, System
-from ..models.work_order import WorkOrder
+from .facility import Facility
+from .installation import Installation
+from .system import System
+from .work_order import WorkOrder
 
 
 @dataclass
-class GenerationResult:
-    """Container for generated entities across hierarchy levels."""
+class DataStore:
+    """Primary container for storing MIDAS entities."""
 
     installations: list[Installation] = field(default_factory=list)
     facilities: list[Facility] = field(default_factory=list)
@@ -22,7 +24,7 @@ class GenerationResult:
         facilities: list[Facility],
         systems: list[System],
         work_orders: list[WorkOrder],
-    ) -> "GenerationResult":
+    ) -> "DataStore":
         """Build a result object for a single generated installation."""
         return cls(
             installations=[installation],

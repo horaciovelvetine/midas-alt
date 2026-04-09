@@ -1,8 +1,10 @@
+"""Maintenance work order linked to installation, facility, and system."""
+
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from ..enums import WO_Priority, WO_Status, WO_TradeSkill
-from ..functions import generate_id
+from src.enums import WO_Priority, WO_Status, WO_TradeSkill
+from src.functions import generate_id
 
 
 @dataclass

@@ -1,14 +1,13 @@
+"""Top-level installation aggregate and facility index."""
+
 from dataclasses import dataclass, field
 
-from ..functions import generate_id
+from src.functions import generate_id
 
 
 @dataclass
 class Installation:
-    """An installation containing multiple facilities.
-
-    Top level of the domain hierarchy.
-    """
+    """Root of the hierarchy; holds facility IDs and rolled-up condition."""
 
     id: str = field(default_factory=generate_id)
     title: str = ""

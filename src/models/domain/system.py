@@ -1,17 +1,16 @@
+"""Maintainable system asset under a facility (condition, type, work orders)."""
+
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from ..functions import generate_id
+from src.functions import generate_id
+
 from .work_order import WorkOrder
 
 
 @dataclass
 class System:
-    """A system within a facility.
-
-    Systems are the lowest level of the hierarchy and have directly
-    measured/simulated condition indices.
-    """
+    """Leaf asset with direct condition index, type key, and embedded work orders."""
 
     id: str = field(default_factory=generate_id)
 

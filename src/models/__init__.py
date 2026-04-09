@@ -1,9 +1,48 @@
-"""Public model exports for simulation domain entities."""
+"""Public domain entities and distribution types for the rest of MIDAS."""
 
-from .dependency_position import DependencyPosition
-from .facility import Facility
-from .installation import Installation
-from .system import System
-from .work_order import WorkOrder
+from .domain import (
+    DataStore,
+    DependencyPosition,
+    Facility,
+    FacilityType,
+    Installation,
+    InstallationLocation,
+    System,
+    SystemType,
+    WorkOrder,
+    WorkOrderText,
+)
 
-__all__ = ["Facility", "Installation", "System", "DependencyPosition", "WorkOrder"]
+from .distributions import (
+    DistributionContext,
+    DistributionBase,
+    WeightedProbabilitySegment,
+    WeightedProbabilityDistribution,
+    NormalCurveDistribution,
+    BathtubCurveDistribution,
+    PiecewiseCurveDistribution,
+    EventRateDistribution,
+)
+
+__all__ = [
+    # Domain models
+    "DataStore",
+    "DependencyPosition",
+    "Facility",
+    "FacilityType",
+    "Installation",
+    "InstallationLocation",
+    "System",
+    "SystemType",
+    "WorkOrder",
+    "WorkOrderText",
+    # Distributions
+    "DistributionContext",
+    "DistributionBase",
+    "WeightedProbabilitySegment",
+    "WeightedProbabilityDistribution",
+    "NormalCurveDistribution",
+    "BathtubCurveDistribution",
+    "PiecewiseCurveDistribution",
+    "EventRateDistribution",
+]

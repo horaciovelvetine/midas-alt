@@ -1,24 +1,24 @@
+"""Facility entity: systems, dependency placement, and aggregate condition."""
+
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from ..config.app_state import get_app_state
-from ..enums import UFCGrade
-from ..functions import generate_id
+from src.enums import UFCGrade
+from src.functions import generate_id
+
 from .dependency_position import DependencyPosition
 
 
 @dataclass
 class Facility:
-    """A facility within an installation.
-
-    Facilities contain systems and have aggregate condition indices
-    calculated from their systems.
-    """
+    """Installation child asset grouping; aggregates condition from its systems."""
 
     id: str = field(default_factory=generate_id)
 
     # Type reference (key into reference data)
     facility_type_key: int | None = None
+    # Denormalized from reference data at generation/load time (avoids global settings lookup).
+    facility_type_title: str | None = None
 
     # Core attributes
     year_constructed: int | None = None
@@ -59,5 +59,5 @@ class Facility:
 
     @property
     def title(self) -> str | None:
-        """Resolve the facility title from configured reference data."""
-        return get_app_state().settings.get_facility_type(self.facility_type_key).title
+        """Facility type display title (populated when the facility is generated or loaded)."""
+        return self.facility_type_title

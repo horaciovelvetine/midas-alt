@@ -1,3 +1,5 @@
+"""Vertical depth and shared dependency groups for facilities."""
+
 import string
 from dataclasses import dataclass, field
 

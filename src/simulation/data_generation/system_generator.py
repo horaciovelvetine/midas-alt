@@ -1,6 +1,7 @@
-from ...functions import generate_id
-from ...models import Facility, System
-from ...models.work_order import WorkOrder
+"""Instantiate required systems per facility type and attach work orders."""
+
+from src.functions import generate_id
+from src.models import Facility, System, WorkOrder
 from .data_generator_base import DataGeneratorBase
 from .work_order_generator import WorkOrderGenerator
 
@@ -12,11 +13,15 @@ class SystemGenerator(DataGeneratorBase):
         """Initialize system generator with shared settings and seed."""
         super().__init__(settings, seed)
 
-    def generate_by_facility(self, facility: Facility) -> tuple[list[System], list[WorkOrder]]:
+    def generate_by_facility(
+        self, facility: Facility
+    ) -> tuple[list[System], list[WorkOrder]]:
         """Generate systems and work orders for a facility."""
         all_systems: list[System] = []
         all_work_orders: list[WorkOrder] = []
-        required_system_types = self.settings.get_system_types_for_facility(facility.facility_type_key or 0)
+        required_system_types = self.settings.get_system_types_for_facility(
+            facility.facility_type_key or 0
+        )
         if not required_system_types:
             return [], []
 

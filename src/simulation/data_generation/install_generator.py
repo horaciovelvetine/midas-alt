@@ -1,7 +1,7 @@
-from ...functions import generate_id
-from ...models import Facility, Installation, System
-from ...models.work_order import WorkOrder
-from ..generation_result import GenerationResult
+"""Build installation roots and delegate facility/system/work-order generation."""
+
+from src.functions import generate_id
+from src.models import DataStore, Facility, Installation, System, WorkOrder
 from .data_generator_base import DataGeneratorBase
 from .facility_generator import FacilityGenerator
 
@@ -13,7 +13,9 @@ class InstallGenerator(DataGeneratorBase):
         """Initialize installation generator with shared settings and seed."""
         super().__init__(settings, seed)
 
-    def generate(self) -> tuple[Installation, list[Facility], list[System], list[WorkOrder]]:
+    def generate(
+        self,
+    ) -> tuple[Installation, list[Facility], list[System], list[WorkOrder]]:
         """Generate one installation and all downstream entities."""
         install = self._initialize_install_instance()
         target_facility_count = self.settings.simulation.get_random_facility_count()
@@ -26,7 +28,7 @@ class InstallGenerator(DataGeneratorBase):
         install.condition_index = self.average_condition_index(facilities)
         return install, facilities, systems, work_orders
 
-    def generate_by_count(self, count: int) -> GenerationResult:
+    def generate_by_count(self, count: int) -> DataStore:
         """Generate multiple installations and return a typed aggregate result."""
         installations: list[Installation] = []
         facilities: list[Facility] = []
@@ -34,13 +36,15 @@ class InstallGenerator(DataGeneratorBase):
         work_orders: list[WorkOrder] = []
 
         for _ in range(max(0, count)):
-            install, install_facilities, install_systems, install_work_orders = self.generate()
+            install, install_facilities, install_systems, install_work_orders = (
+                self.generate()
+            )
             installations.append(install)
             facilities.extend(install_facilities)
             systems.extend(install_systems)
             work_orders.extend(install_work_orders)
 
-        return GenerationResult(
+        return DataStore(
             installations=installations,
             facilities=facilities,
             systems=systems,

@@ -1,9 +1,10 @@
+"""Sample work orders from configured status, priority, and text distributions."""
+
 import random
 from datetime import datetime, timedelta
 
-from ...enums import WO_Priority, WO_Status, WO_TradeSkill
-from ...models import System
-from ...models.work_order import WorkOrder
+from src.enums import WO_Priority, WO_Status, WO_TradeSkill
+from src.models import System, WorkOrder
 from .data_generator_base import DataGeneratorBase
 
 
@@ -16,8 +17,14 @@ class WorkOrderGenerator(DataGeneratorBase):
 
     def generate_by_system(self, system: System) -> list[WorkOrder]:
         """Generate work orders for a system using lifecycle-aware distributions."""
-        system_type = self.settings.get_system_type(system.system_type_key) if system.system_type_key else None
-        context = self.build_system_distribution_context(system=system, system_type=system_type)
+        system_type = (
+            self.settings.get_system_type(system.system_type_key)
+            if system.system_type_key
+            else None
+        )
+        context = self.build_system_distribution_context(
+            system=system, system_type=system_type
+        )
         horizon_years = max(1.0, float(system.age_years or 1))
 
         wo_count = self.sample_event_count(
@@ -30,8 +37,12 @@ class WorkOrderGenerator(DataGeneratorBase):
         for _ in range(wo_count):
             status = self._sample_work_order_status()
             request_datetime = self._sample_request_datetime(system, status)
-            completion_datetime = self._sample_completion_datetime(status, request_datetime)
-            problem_description, requested_action, actions_taken = self._sample_text_fields(status, system_type)
+            completion_datetime = self._sample_completion_datetime(
+                status, request_datetime
+            )
+            problem_description, requested_action, actions_taken = (
+                self._sample_text_fields(status, system_type)
+            )
 
             work_orders.append(
                 WorkOrder(
@@ -66,7 +77,9 @@ class WorkOrderGenerator(DataGeneratorBase):
     def _sample_requesting_organization(self) -> str | None:
         return self.settings.get_random_work_order_requesting_organization()
 
-    def _sample_text_fields(self, status: WO_Status, system_type) -> tuple[str | None, str | None, str | None]:
+    def _sample_text_fields(
+        self, status: WO_Status, system_type
+    ) -> tuple[str | None, str | None, str | None]:
         system_title = getattr(system_type, "title", None)
         sampled = self.settings.sample_work_order_text(system_title)
         if sampled is None:
@@ -74,7 +87,9 @@ class WorkOrderGenerator(DataGeneratorBase):
             base_requested = "example text"
             base_actions = "example text"
         else:
-            base_problem, base_requested, base_actions = sampled
+            base_problem = sampled.problem_description
+            base_requested = sampled.requested_action
+            base_actions = sampled.action_taken
 
         problem_description = base_problem if base_problem else "example text"
         requested_action = base_requested if base_requested else "example text"
@@ -82,7 +97,11 @@ class WorkOrderGenerator(DataGeneratorBase):
         if status == WO_Status.COMPLETED:
             actions_taken = base_actions if base_actions else "example text"
         elif status == WO_Status.IN_PROGRESS:
-            actions_taken = (base_actions if base_actions else "example text") if random.random() < 0.5 else None
+            actions_taken = (
+                (base_actions if base_actions else "example text")
+                if random.random() < 0.5
+                else None
+            )
         else:
             actions_taken = None
 
@@ -90,7 +109,9 @@ class WorkOrderGenerator(DataGeneratorBase):
 
     def _sample_request_datetime(self, system: System, status: WO_Status) -> datetime:
         now = datetime.now()
-        start_year = system.year_constructed or max(now.year - int(system.age_years or 1), 1900)
+        start_year = system.year_constructed or max(
+            now.year - int(system.age_years or 1), 1900
+        )
         start = datetime(start_year, 1, 1)
         if start > now:
             start = now - timedelta(days=1)
@@ -112,7 +133,9 @@ class WorkOrderGenerator(DataGeneratorBase):
             return now
         return lower + timedelta(seconds=random.randint(0, total_seconds))
 
-    def _sample_completion_datetime(self, status: WO_Status, request_datetime: datetime) -> datetime | None:
+    def _sample_completion_datetime(
+        self, status: WO_Status, request_datetime: datetime
+    ) -> datetime | None:
         if status != WO_Status.COMPLETED:
             return None
         now = datetime.now()

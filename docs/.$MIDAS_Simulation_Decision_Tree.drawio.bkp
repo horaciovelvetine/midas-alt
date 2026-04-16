@@ -1,0 +1,200 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.3.6 Chrome/140.0.7339.249 Electron/38.8.0 Safari/537.36" version="29.3.6">
+  <diagram name="CI-Module-Flowchart-v1" id="e6soa-l74r0LUQ7vzoLr">
+    <mxGraphModel dx="1710" dy="1004" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-13" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="EqCCOF2JMBVHCbhCQh1_-12" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-11" parent="1" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;fillColor=#008a00;fontColor=#ffffff;strokeColor=#005700;" value="Condition Index Model" vertex="1">
+          <mxGeometry height="60" width="160" x="120" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-20" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="EqCCOF2JMBVHCbhCQh1_-11">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="300" y="190" />
+              <mxPoint x="300" y="90" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-36" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="EqCCOF2JMBVHCbhCQh1_-14" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-12" parent="1" style="whiteSpace=wrap;html=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" value="Dependency Chain" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-35" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="EqCCOF2JMBVHCbhCQh1_-16" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-43" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="EqCCOF2JMBVHCbhCQh1_-42" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-14" parent="1" style="whiteSpace=wrap;html=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" value="Base Degradation" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-19" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="EqCCOF2JMBVHCbhCQh1_-18" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-46" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="EqCCOF2JMBVHCbhCQh1_-45" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-16" parent="1" style="whiteSpace=wrap;html=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" value="Use Factor" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-22" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="EqCCOF2JMBVHCbhCQh1_-21" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-48" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="EqCCOF2JMBVHCbhCQh1_-47" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-18" parent="1" style="whiteSpace=wrap;html=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" value="Major Event" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-24" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="EqCCOF2JMBVHCbhCQh1_-23" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-50" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="EqCCOF2JMBVHCbhCQh1_-49" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-21" parent="1" style="whiteSpace=wrap;html=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" value="Work Order" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-26" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="120" y="800" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-28" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;curved=1;" target="EqCCOF2JMBVHCbhCQh1_-27">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-23" parent="1" style="whiteSpace=wrap;html=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" value="Environment" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-30" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="EqCCOF2JMBVHCbhCQh1_-29" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="120" y="860" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-25" parent="1" style="whiteSpace=wrap;html=1;fillColor=#647687;fontColor=#ffffff;strokeColor=#314354;" value="Location" vertex="1">
+          <mxGeometry height="60" width="120" x="80" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-31" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-27" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=1;" target="EqCCOF2JMBVHCbhCQh1_-29">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-54" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-27" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="EqCCOF2JMBVHCbhCQh1_-53" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-27" parent="1" style="whiteSpace=wrap;html=1;fillColor=#647687;fontColor=#ffffff;strokeColor=#314354;" value="Weather" vertex="1">
+          <mxGeometry height="60" width="120" x="200" y="840" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-32" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="EqCCOF2JMBVHCbhCQh1_-11">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="40" y="970" />
+              <mxPoint x="40" y="90" />
+            </Array>
+            <mxPoint x="120" y="160" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-56" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="EqCCOF2JMBVHCbhCQh1_-55" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-29" parent="1" style="whiteSpace=wrap;html=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" value="Resiliency Grading" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-41" parent="1" style="shape=note;size=20;whiteSpace=wrap;html=1;align=left;" value="&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font style=&quot;color: rgb(255, 255, 255);&quot;&gt;Specialized module which is considered ‘outside’ (or first in) the Condition Index&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font style=&quot;color: rgb(255, 255, 255);&quot;&gt;calculation/step loop. While the underlying facility should (may?) continue to have its&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font style=&quot;color: rgb(255, 255, 255);&quot;&gt;degradation calculated, if any facilities on which this facility depends have degraded&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font style=&quot;color: rgb(255, 255, 255);&quot;&gt;then it should be assumed that this facility is no longer operation. Systems will use&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font style=&quot;color: rgb(255, 255, 255);&quot;&gt;work orders to a similar effect.&lt;/font&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="80" width="500" x="340" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-42" parent="1" style="shape=note;size=20;whiteSpace=wrap;html=1;align=left;" value="&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;The default amount of degradation for a system calculated on each time-step, amount&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;will depend on the time-period being used.&lt;/font&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="80" width="500" x="340" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-44" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="EqCCOF2JMBVHCbhCQh1_-41">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-45" parent="1" style="shape=note;size=20;whiteSpace=wrap;html=1;align=left;" value="&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;Generalize way to assess how this entity is used over the course of a day e.g. 24/7,&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;occasional, work hours, rare. Or any applicable cases not mentioned.&lt;/font&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="80" width="500" x="340" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-47" parent="1" style="shape=note;size=20;whiteSpace=wrap;html=1;align=left;" value="&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;Chance based large scale/external event that would impact infrastructure&#39;s ability to&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;function e.g. adversarial attacks, weather disasters, power failure. Or any applicable&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;cases not mentioned. Events would be likely to require a cold restart of the entity, a&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;known source of failure in infrastructure, so this module should calculate potential impact&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;on condition for this paradigm.&lt;/font&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="80" width="500" x="340" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-49" parent="1" style="shape=note;size=20;whiteSpace=wrap;html=1;align=left;" value="&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;Should use the presence of any &#39;Work Order&#39; and its individual attributes to calculate&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;ongoing impact on condition. Should handle outstanding (complete/incomplete), mission&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;criticality (impacts mission function), severity, and time.&amp;nbsp;&lt;/font&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="80" width="500" x="340" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-51" parent="1" style="shape=note;size=20;whiteSpace=wrap;html=1;align=left;" value="&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;Location specific calculations which reflect unique elements of the environment which&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;might impact a facility of system (e.g. nearness to an ocean would have a higher severity&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;of corrosion due to salt in the air)&lt;/font&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="80" width="500" x="340" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-52" edge="1" parent="1" source="EqCCOF2JMBVHCbhCQh1_-25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="EqCCOF2JMBVHCbhCQh1_-51">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="320" y="810" />
+              <mxPoint x="320" y="760" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-53" parent="1" style="shape=note;size=20;whiteSpace=wrap;html=1;align=left;" value="&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;Uses historical weather data at the location to assess how weather could affect an entity&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; font-family: Calibri, sans-serif; text-indent: -0.25in;&quot;&gt;&lt;font color=&quot;#ffffff&quot;&gt;through the course of its lifecycle (heating and cooling, humidity, temperature, etc.)&lt;/font&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="80" width="500" x="340" y="830" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-55" parent="1" style="shape=note;size=20;whiteSpace=wrap;html=1;align=left;" value="&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; text-indent: -0.25in;&quot;&gt;&lt;font face=&quot;Calibri, sans-serif&quot;&gt;Based on the UFC Grading of a given facility, this should remain at the end of the&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; text-indent: -0.25in;&quot;&gt;&lt;font face=&quot;Calibri, sans-serif&quot;&gt;calculation flow as it would consider the current condition index against its own gradation&lt;/font&gt;&lt;/p&gt;&lt;p class=&quot;MsoListParagraph&quot; style=&quot;margin: 0in 0in 0in 0.5in; text-indent: -0.25in;&quot;&gt;&lt;font face=&quot;Calibri, sans-serif&quot;&gt;to assess if the facility would be able to maintain operation through some level of failure.&lt;/font&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="80" width="500" x="340" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-86" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="263" width="830" x="860" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-83" parent="EqCCOF2JMBVHCbhCQh1_-86" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#6d8764;strokeColor=#3A5431;fontColor=#ffffff;" value="" vertex="1">
+          <mxGeometry height="260" width="830" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-69" edge="1" parent="EqCCOF2JMBVHCbhCQh1_-86" source="EqCCOF2JMBVHCbhCQh1_-65" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="EqCCOF2JMBVHCbhCQh1_-68" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-65" parent="EqCCOF2JMBVHCbhCQh1_-86" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" value="START:&lt;div&gt;Base Degradation&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="10" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-71" edge="1" parent="EqCCOF2JMBVHCbhCQh1_-86" source="EqCCOF2JMBVHCbhCQh1_-68" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="EqCCOF2JMBVHCbhCQh1_-73" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="250" y="180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-72" connectable="0" parent="EqCCOF2JMBVHCbhCQh1_-71" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Yes" vertex="1">
+          <mxGeometry relative="1" x="-0.281" y="3" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-75" edge="1" parent="EqCCOF2JMBVHCbhCQh1_-86" source="EqCCOF2JMBVHCbhCQh1_-68" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="EqCCOF2JMBVHCbhCQh1_-74" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-76" connectable="0" parent="EqCCOF2JMBVHCbhCQh1_-75" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="No" vertex="1">
+          <mxGeometry relative="1" x="-0.2778" y="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-68" parent="EqCCOF2JMBVHCbhCQh1_-86" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;" value="Is already degraded?" vertex="1">
+          <mxGeometry height="60" width="160" x="170" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-82" edge="1" parent="EqCCOF2JMBVHCbhCQh1_-86" source="EqCCOF2JMBVHCbhCQh1_-73" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="EqCCOF2JMBVHCbhCQh1_-80">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-73" parent="EqCCOF2JMBVHCbhCQh1_-86" style="rounded=1;whiteSpace=wrap;html=1;" value="&lt;b&gt;&lt;u&gt;Degrades Faster:&lt;/u&gt;&lt;/b&gt;&lt;div&gt;index *&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;BASE_DEGRADE_FACTOR * ALREADY_DEGRADED_FACTOR * TIME_FACTOR&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="220" x="140" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-81" edge="1" parent="EqCCOF2JMBVHCbhCQh1_-86" source="EqCCOF2JMBVHCbhCQh1_-74" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="EqCCOF2JMBVHCbhCQh1_-80" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-74" parent="EqCCOF2JMBVHCbhCQh1_-86" style="rounded=1;whiteSpace=wrap;html=1;" value="Stable Degradation:&lt;div&gt;index * BASE_DEGRADE_FACTOR * TIME_FACTOR&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="210" x="420" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-80" parent="EqCCOF2JMBVHCbhCQh1_-86" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;rounded=1;" value="END" vertex="1">
+          <mxGeometry height="60" width="120" x="700" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-84" parent="EqCCOF2JMBVHCbhCQh1_-86" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;b&gt;&lt;font style=&quot;font-size: 15px;&quot;&gt;Example Documentation Flowchart: Base Degradation&lt;/font&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="420" as="geometry" />
+        </mxCell>
+        <mxCell id="EqCCOF2JMBVHCbhCQh1_-85" parent="EqCCOF2JMBVHCbhCQh1_-86" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;b&gt;&lt;i&gt;*ALL_CAPS*:&lt;/i&gt;&lt;/b&gt; Should be references to values which will be configureable in the excel config to allow customization." vertex="1">
+          <mxGeometry height="30" width="660" x="85" y="233" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

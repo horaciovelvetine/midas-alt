@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 
-from rich.console import Group
+from rich.console import Console, Group
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -19,6 +19,8 @@ from src.simulation.runtime import EntityRuntimeState, SimulationSession
 
 INSTALL_MISSION_WO_ALERT_THRESHOLD = 5
 SYSTEM_MISSION_WO_ALERT_THRESHOLD = 2
+
+console = Console()
 
 _MISSION_ALERT_OPEN_STATUSES = frozenset(
     {WO_Status.SUBMITTED, WO_Status.APPROVED, WO_Status.IN_PROGRESS}

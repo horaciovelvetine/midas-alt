@@ -1,22 +1,32 @@
 # MIDAS Simulation System Internals
 
-Companion to [`README.md`](../README.md): user flows and file map stay there; this doc covers **runtime** shape—where data comes from, what **`SimulationSession`** owns, **`step()`** ordering, and how to add **`Base`** modules without fighting derived state.
+Companion to [`README.md`](../README.md): user flows and file map stay there; this doc covers **runtime** shape—where data comes from, what **`SimulationSession`** owns, **`step()`** ordering, and how to add **`SimulationModuleBase`** modules without fighting derived state.
 
-**You will use this to decide:** what to mutate in `apply()`, what the session recomputes for you, and where UI ends (`simulation_shell.py`) vs simulation logic.
+**You will use this to decide:** what to mutate in `apply()`, what the session recomputes for you, and where UI ends (`simulation_shell.py` / `simulation_shell_panels.py`) vs simulation logic.
+
+## Package Boundaries After Refactor
+
+The runtime now sits on top of four distinct package areas:
+
+- `src/io/`: workbook loading, dataset import, export configuration, and file formatting.
+- `src/models/domain/`: entity models, reference-data models, and `DataStore`.
+- `src/models/distributions/`: weighted and event-rate distribution classes consumed by config and generation.
+- `src/simulation/data_generation/`: installation/facility/system/work-order generation pipeline. `DataGenerator` is re-exported from `src.simulation`.
 
 ## One-Screen Mental Model
 
 ```mermaid
 flowchart TD
-    A["Workbook config (.xlsx)"]
-    B["DataGenerator"]
-    C["SimulationDataLoader"]
-    D["GenerationResult -> installations, facilities, systems, work_orders"]
-    E["SimulationSession.from_generation_result()"]
-    F["Single active installation"]
-    G["SimulationSession"]
-    H["SimulationShell -> dashboard and controls"]
-    I["Condition history export"]
+    A["ConfigWorkbookLoader"]
+    B["MIDASSettings"]
+    C["DataGenerator"]
+    D["SimulationDataLoader"]
+    E["DataStore -> installations, facilities, systems, work_orders"]
+    F["SimulationSession.from_data_store()"]
+    G["Single active installation"]
+    H["SimulationSession"]
+    I["SimulationShell -> dashboard and controls"]
+    J["Condition history export"]
 
     subgraph T["Per-tick flow inside SimulationSession.step()"]
         T1["Advance clock"]
@@ -29,13 +39,14 @@ flowchart TD
     end
 
     A --> B
-    A --> C
+    B --> C
     B --> D
-    C --> D
-    D --> E --> F --> G
-    G --> T
-    G --> H
-    G --> I
+    C --> E
+    D --> E
+    E --> F --> G --> H
+    H --> T
+    H --> I
+    H --> J
 ```
 
 One installation per session; **`SimulationSession`** owns mutable runtime state for that slice.
@@ -54,18 +65,20 @@ Important runtime-relevant settings include:
 - work-order distributions
 - facility and system reference data
 
-The settings loader builds a `MIDASSettings` object, which is passed into generators, loaders, exporters, and the runtime session.
+`ConfigWorkbookLoader` in `src/io/loaders/config_workbook_loader.py` builds a `MIDASSettings` object. The resulting settings are then passed into generators, loaders, exporters, and the runtime session. The reference-data types (`FacilityType`, `SystemType`, `InstallationLocation`, `WorkOrderText`) now live under `src/models/domain/`, and distribution implementations live under `src/models/distributions/`.
 
 ### Generated or loaded data
 
-Before anything can run in the live simulation, MIDAS needs a `GenerationResult`.
+Before anything can run in the live simulation, MIDAS needs a `DataStore`.
 
-`GenerationResult` is a flat container with four lists:
+`DataStore` is a flat container with four lists:
 
 - `installations`
 - `facilities`
 - `systems`
 - `work_orders`
+
+`DataStore` lives in `src/models/domain/data_store.py` and is re-exported from `src.models`. It replaces the older `GenerationResult` container name used before the refactor.
 
 Relationships are stored by IDs on the models, not by a database or ORM layer. The session rebuilds lookup maps from those IDs when it starts.
 
@@ -90,7 +103,7 @@ If you are adding runtime behavior, this is the file to understand first.
 `src/simulation/modules/base.py` defines the module contract:
 
 ```python
-class Base(ABC):
+class SimulationModuleBase(ABC):
     @abstractmethod
     def apply(self, session: SimulationSession) -> list[ModuleEvent]:
         ...
@@ -124,7 +137,7 @@ The current model is passive only (no maintenance recovery, backlog penalties, o
 
 ### Pause policies
 
-Pause policies use the same `Base` contract, but conceptually they should evaluate state instead of advancing it.
+Pause policies use the same `SimulationModuleBase` contract, but conceptually they should evaluate state instead of advancing it.
 
 The default policy is `CriticalStatePausePolicy`, which pauses the session when an entity newly becomes:
 
@@ -135,7 +148,7 @@ It tracks prior critical entities so the same failure does not trigger a pause e
 
 ### Shell and dashboard
 
-`src/cli/simulation_shell.py` renders **`SimulationSession`** state only; keep business rules in modules or pause policies.
+`src/cli/simulation_shell.py` runs the **`Live`** loop and key handling; `src/cli/simulation_shell_panels.py` holds Rich renderables and prompt flows. Together they reflect **`SimulationSession`** state only; keep business rules in modules or pause policies.
 
 **Stack (top to bottom):** three summary panels (installation, simulation overview, work orders) → optional **Mission alerts** strip (red border: narrative, category counts, thresholds; **`a`** pauses and opens explainer + snapshot + “why” table + numbered drill-down to metrics, rules, sample WOs) → **Installation Graph** beside **Inspect**. Systems in the tree stay hidden until **`f`** or until a facility is focused (focus always expands that facility’s systems).
 
@@ -145,12 +158,12 @@ It tracks prior critical entities so the same failure does not trigger a pause e
 
 There are two supported entry paths:
 
-1. Generate data in memory with `DataGenerator`
-2. Load normalized exported data with `SimulationDataLoader`
+1. Generate data in memory with `DataGenerator` (`src/simulation/data_generation/data_generator.py`, also re-exported from `src.simulation`)
+2. Load normalized exported data with `SimulationDataLoader` (`src/io/loaders/simulation_data_loader.py`)
 
-Both produce a `GenerationResult`.
+Both produce a `DataStore`.
 
-When `SimulationSession.from_generation_result(...)` is called, the session:
+When `SimulationSession.from_data_store(...)` is called, the session:
 
 1. selects exactly one installation from the result set
 2. deep-copies that single-installation subset
@@ -159,6 +172,8 @@ When `SimulationSession.from_generation_result(...)` is called, the session:
 5. recalculates aggregate condition indices
 6. records the initial history snapshot at tick `0`
 7. runs pause policies once against the initial state
+
+The preferred entry point is `from_data_store`; `from_generation_result` remains as a deprecated alias. The input is a `DataStore`.
 
 That deep copy matters: modules mutate the session-owned copy, not the caller's original result object.
 
@@ -283,11 +298,11 @@ This is the intended shape for a runtime module:
 
 ```python
 from src.enums.entity_type import EntityType
-from src.simulation.modules.base import Base, ModuleEvent
+from src.simulation.modules.base import ModuleEvent, SimulationModuleBase
 from src.simulation.runtime import SimulationSession
 
 
-class ExampleSystemDecayModule(Base):
+class ExampleSystemDecayModule(SimulationModuleBase):
     def apply(self, session: SimulationSession) -> list[ModuleEvent]:
         events: list[ModuleEvent] = []
 

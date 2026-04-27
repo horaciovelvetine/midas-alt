@@ -73,8 +73,6 @@ class ExcelFormatter(BaseFormatter):
                         "facilities": "Facilities",
                         "systems": "Systems",
                         "work_orders": output.excel_sheet_work_orders,
-                        "facility_time_series": output.excel_sheet_facility_ts,
-                        "system_time_series": output.excel_sheet_system_ts,
                     }
                     sheet_name = sheet_name_map.get(
                         table_name, table_name.replace("_", " ").title()

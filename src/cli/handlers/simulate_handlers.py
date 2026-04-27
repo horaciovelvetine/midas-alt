@@ -81,10 +81,6 @@ def _display_selection_summary(selections: dict) -> None:
     layout_display = f"{layout} {'(recommended)' if layout == 'normalized' else ''}"
     table.add_row("Output Layout", layout_display, style="default")
 
-    include_ts = selections.get("include_time_series")
-    ts_display = "Yes" if include_ts else "No"
-    table.add_row("Include Time Series", ts_display, style="default")
-
     gen_metadata = selections.get("generate_metadata")
     metadata_display = "Yes" if gen_metadata else "No"
     table.add_row("Generate Metadata", metadata_display, style="default")
@@ -659,7 +655,6 @@ def handle_generate_data() -> None:
         "output_directory": None,
         "generation_method": None,
         "target_count": None,
-        "include_time_series": None,
         "layout": None,
         "generate_metadata": None,
         "description": None,
@@ -671,14 +666,13 @@ def handle_generate_data() -> None:
         "output_directory": ".",
         "generation_method": "default",
         "target_count": None,
-        "include_time_series": False,
         "layout": "normalized",
         "generate_metadata": True,
         "description": "",
     }
 
     step = 0
-    total_steps = 9
+    total_steps = 8
 
     while step < total_steps:
         DisplayHelper.clear_screen()
@@ -872,29 +866,7 @@ def handle_generate_data() -> None:
             selections["layout"] = value if value else defaults["layout"]
             step += 1
 
-        elif step == 6:  # Include time series
-            current_value = "yes" if selections["include_time_series"] else "no"
-            NavigationHelper.show_help(
-                "Include Time Series",
-                "Whether to include time series data (increases file size).",
-                "yes, no",
-            )
-            prompt = f"[{step + 1}/{total_steps}] Include time series? (yes/no) (current: {current_value}, b back / q cancel):"
-            value = InputHelper.ask_yes_no(
-                prompt, default=False, allow_back=True, allow_quit_flow=True
-            )
-
-            if value is InputHelper.QUIT_TO_MENU:
-                DisplayHelper.print_warning("Cancelled. Returning to menu.")
-                return
-            if value is None:
-                step -= 1
-                continue
-
-            selections["include_time_series"] = value
-            step += 1
-
-        elif step == 7:  # Generate metadata
+        elif step == 6:  # Generate metadata
             current_value = (
                 "yes"
                 if (selections["generate_metadata"] or defaults["generate_metadata"])
@@ -920,7 +892,7 @@ def handle_generate_data() -> None:
             selections["generate_metadata"] = value
             step += 1
 
-        elif step == 8:  # Description
+        elif step == 7:  # Description
             current_value = selections["description"] or defaults["description"]
             NavigationHelper.show_help(
                 "Dataset Description",
@@ -960,7 +932,6 @@ def handle_generate_data() -> None:
             file_name=selections["file_name"],
             output_format=selections["file_output"],
             output_directory=selections["output_directory"],
-            include_time_series=selections["include_time_series"],
             layout=selections["layout"],
             generate_metadata=selections["generate_metadata"],
             description=selections["description"],

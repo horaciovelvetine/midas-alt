@@ -25,7 +25,6 @@ class DegradationSettings:
     condition_index_degraded_threshold: float = 25.0
     resiliency_grade_threshold: int = 70
     initial_condition_index: float = 99.99
-    max_time_series_years: int = 10
 
 
 @dataclass(frozen=True)
@@ -90,8 +89,6 @@ class OutputSettings:
     """Settings for data export/output."""
 
     excel_sheet_main: str = "Main Data"
-    excel_sheet_facility_ts: str = "Facility Time Series"
-    excel_sheet_system_ts: str = "System Time Series"
     excel_sheet_metadata: str = "_metadata"
     metadata_file_suffix: str = "_metadata.json"
     csv_table_separator: str = "_"

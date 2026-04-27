@@ -144,9 +144,6 @@ def create_config_values_panel(settings: MIDASSettings) -> Panel:
     )
     deg_table.add_row("Resiliency Grade Threshold", str(deg.resiliency_grade_threshold))
     deg_table.add_row("Initial Condition Index", str(deg.initial_condition_index))
-    deg_table.add_row(
-        "Maximum Time Series Years History", str(deg.max_time_series_years)
-    )
 
     # --- Simulation Settings ---
     sim_table = Table(show_header=False, box=None, padding=(0, 2))
@@ -177,10 +174,6 @@ def create_config_values_panel(settings: MIDASSettings) -> Panel:
 
     out = settings.output
     out_table.add_row("Excel Sheet Main Name", out.excel_sheet_main)
-    out_table.add_row(
-        "Excel Sheet Facility Time Series Name", out.excel_sheet_facility_ts
-    )
-    out_table.add_row("Excel Sheet System Time Series Name", out.excel_sheet_system_ts)
     out_table.add_row("Excel Sheet Metadata Name", out.excel_sheet_metadata)
     out_table.add_row("Excel Sheet Work Orders Name", out.excel_sheet_work_orders)
     out_table.add_row("Metadata File Suffix", out.metadata_file_suffix)

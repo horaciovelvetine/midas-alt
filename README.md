@@ -146,7 +146,9 @@ Configurable areas include: facility/system counts and ages, dependency chain de
 
 - **Formats:** `csv`, `xlsx`
 - **Layouts:** `normalized` (per-entity tables/sheets), `denormalized` (one row per work order)
-- **Options:** optional synthetic facility/system **time series** in the transformer (derived from current CI and age — not the same as runtime `ConditionHistoryStore` data); optional **metadata JSON** next to the export file.
+- **Options:** optional **metadata JSON** next to CSV exports, or a metadata sheet in Excel exports.
+
+Condition-index time series are produced by runtime simulations through `ConditionHistoryStore` and `SimulationSession.export_history_tables()`, not by generated dataset exports.
 
 Exports are written under `{output_directory}/{file_name}/` (see `ExportConfig`).
 
@@ -174,7 +176,6 @@ exporter = DataExporter(
     output_format="xlsx",  # or "csv"
     output_directory="./output",
     layout="normalized",
-    include_time_series=False,
     generate_metadata=True,
     settings=settings,
 )

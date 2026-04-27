@@ -23,7 +23,6 @@ class DataExporter:
         file_name: str,
         output_format: OutputFileType | str,
         output_directory: str | Path = ".",
-        include_time_series: bool = False,
         layout: OutputLayoutSchema | str = OutputLayoutSchema.NORMALIZED,
         generate_metadata: bool = True,
         description: str = "",
@@ -35,7 +34,6 @@ class DataExporter:
             file_name: Base name for the output file (without extension).
             output_format: Format for export (csv, xlsx). Simulation ``OutputFormat`` is accepted.
             output_directory: Directory where file will be saved.
-            include_time_series: Whether to include time series data.
             layout: Output layout. Simulation ``OutputLayout`` is accepted.
             generate_metadata: Whether to generate a metadata JSON file.
             description: Optional description for the dataset.
@@ -50,17 +48,13 @@ class DataExporter:
             file_name=file_name,
             output_format=output_format,
             output_directory=output_directory,
-            include_time_series=include_time_series,
             layout=layout,
             generate_metadata=generate_metadata,
             description=description,
         )
 
         self.generator = DataGenerator(settings=self.settings)
-        self.transformer = DataTransformer(
-            settings=self.settings,
-            include_time_series=include_time_series,
-        )
+        self.transformer = DataTransformer(settings=self.settings)
 
         self.formatter = self._create_formatter()
 
@@ -75,10 +69,7 @@ class DataExporter:
         obj.settings = settings or get_app_state().settings
         obj.config = config
         obj.generator = DataGenerator(settings=obj.settings)
-        obj.transformer = DataTransformer(
-            settings=obj.settings,
-            include_time_series=config.include_time_series,
-        )
+        obj.transformer = DataTransformer(settings=obj.settings)
         obj.formatter = obj._create_formatter()
         return obj
 
@@ -193,7 +184,6 @@ class DataExporter:
             "target_count": target_count,
             "output_format": self.config.output_format.value,
             "layout": self.config.layout.value,
-            "include_time_series": self.config.include_time_series,
             "counts": {
                 "installations": len(installations),
                 "facilities": len(facilities),

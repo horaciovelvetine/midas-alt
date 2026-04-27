@@ -29,7 +29,6 @@ PARAMETER_KEY_MAP: dict[str, str] = {
     "condition index degraded threshold": "condition_index_degraded_threshold",
     "resiliency grade threshold": "resiliency_grade_threshold",
     "initial condition index": "initial_condition_index",
-    "maximum time series years history": "max_time_series_years",
     "facilities per installation": "facilities_per_installation",
     "dependency chain group range": "dependency_chain_group_range",
     "maximum vertical depth": "max_vertical_depth",
@@ -40,8 +39,6 @@ PARAMETER_KEY_MAP: dict[str, str] = {
     "maximum facility age": "maximum_facility_age",
     "facility condition randomly degrades chance": "facility_condition_randomly_degrades_chance",
     "output excel sheet main name": "excel_sheet_main",
-    "output excel sheet facility ts name": "excel_sheet_facility_ts",
-    "output excel sheet system ts name": "excel_sheet_system_ts",
     "output excel sheet work orders name": "excel_sheet_work_orders",
     "output excel sheet metadata name": "excel_sheet_metadata",
     "outputed metadata file suffix": "metadata_file_suffix",
@@ -115,7 +112,6 @@ def _load_config_values(
         initial_condition_index=float(
             config_dict.get("initial_condition_index", 99.99)
         ),
-        max_time_series_years=int(config_dict.get("max_time_series_years", 10)),
     )
 
     facilities_range = _parse_range(
@@ -138,12 +134,6 @@ def _load_config_values(
 
     output = OutputSettings(
         excel_sheet_main=str(config_dict.get("excel_sheet_main", "Main Data")).strip(),
-        excel_sheet_facility_ts=str(
-            config_dict.get("excel_sheet_facility_ts", "Facility Time Series")
-        ).strip(),
-        excel_sheet_system_ts=str(
-            config_dict.get("excel_sheet_system_ts", "System Time Series")
-        ).strip(),
         excel_sheet_work_orders=str(
             config_dict.get("excel_sheet_work_orders", "Work Orders")
         ).strip(),

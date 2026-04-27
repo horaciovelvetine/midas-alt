@@ -1,6 +1,5 @@
 """Transform domain entities to exportable formats."""
 
-from datetime import datetime
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -18,11 +17,9 @@ class DataTransformer:
     def __init__(
         self,
         settings: "MIDASSettings | None" = None,
-        include_time_series: bool = False,
     ) -> None:
-        """Use ``settings`` (or app state) and optionally materialize time-series tables."""
+        """Use ``settings`` or the current application state for reference lookups."""
         self.settings = settings or get_app_state().settings
-        self.include_time_series = include_time_series
 
     def _facility_type_title(self, facility: Facility) -> str:
         """Resolve facility type title from denormalized data or reference lookup."""
@@ -38,7 +35,7 @@ class DataTransformer:
         systems: list[System],
         work_orders: list[WorkOrder],
     ) -> dict[str, pd.DataFrame | None]:
-        """Return keyed DataFrames for each logical export table (time series optional)."""
+        """Return keyed DataFrames for each normalized export table."""
         # Build lookup for facilities and systems
         facilities_by_install = {}
         for f in facilities:
@@ -149,16 +146,6 @@ class DataTransformer:
             "systems": pd.DataFrame(systems_rows) if systems_rows else None,
             "work_orders": pd.DataFrame(work_orders_rows) if work_orders_rows else None,
         }
-
-        # Generate time series data if requested
-        if self.include_time_series:
-            tables["facility_time_series"] = self._generate_facility_time_series(
-                facilities
-            )
-            tables["system_time_series"] = self._generate_system_time_series(systems)
-        else:
-            tables["facility_time_series"] = None
-            tables["system_time_series"] = None
 
         return tables
 
@@ -281,9 +268,6 @@ class DataTransformer:
             }
 
             for facility in facilities_by_install.get(install.id, []):
-                facility_type = self.settings.get_facility_type(
-                    facility.facility_type_key or 0
-                )
                 facility_data = {
                     "id": facility.id,
                     "facility_type_key": facility.facility_type_key,
@@ -346,164 +330,3 @@ class DataTransformer:
             data.append(install_data)
 
         return {"installations": data}
-
-    # ! ====================================================================================>
-    # ! Sunsetted Condition Index Time Series code...
-    # ! Originally used to generate Condition Index history using (Spacecom J4 provided) PERT
-    # !   modelling curve, commented out here to provide historical context to early iterations
-    # !   of functionality through the early stages of MIDAS.
-    # ! ====================================================================================>
-
-    def _generate_facility_time_series(
-        self,
-        facilities: list[Facility],
-    ) -> pd.DataFrame | None:
-        """Generate historical condition index time series for facilities."""
-        rows = []
-
-        for facility in facilities:
-            if facility.condition_index is None or facility.year_constructed is None:
-                continue
-
-            title = self._facility_type_title(facility)
-
-            time_series = self._calculate_historical_ci(
-                current_ci=facility.condition_index,
-                year_constructed=facility.year_constructed,
-                initial_ci=self.settings.degradation.initial_condition_index,
-            )
-
-            for months_ago, ci_value, date_str in time_series:
-                rows.append(
-                    {
-                        "entity_id": facility.id,
-                        "entity_type": "facility",
-                        "facility_type_key": facility.facility_type_key,
-                        "title": title,
-                        "date": date_str,
-                        "months_ago": months_ago,
-                        "condition_index": ci_value,
-                    }
-                )
-
-        return pd.DataFrame(rows) if rows else None
-
-    def _generate_system_time_series(
-        self,
-        systems: list[System],
-    ) -> pd.DataFrame | None:
-        """Generate historical condition index time series for systems."""
-        rows = []
-
-        for system in systems:
-            if system.condition_index is None or system.year_constructed is None:
-                continue
-
-            system_type = self.settings.get_system_type(system.system_type_key or 0)
-            title = system_type.title if system_type else ""
-
-            time_series = self._calculate_historical_ci(
-                current_ci=system.condition_index,
-                year_constructed=system.year_constructed,
-                initial_ci=self.settings.degradation.initial_condition_index,
-            )
-
-            for months_ago, ci_value, date_str in time_series:
-                rows.append(
-                    {
-                        "entity_id": system.id,
-                        "entity_type": "system",
-                        "system_type_key": system.system_type_key,
-                        "facility_id": system.facility_id,
-                        "title": title,
-                        "date": date_str,
-                        "months_ago": months_ago,
-                        "condition_index": ci_value,
-                    }
-                )
-
-        return pd.DataFrame(rows) if rows else None
-
-    def _calculate_historical_ci(
-        self,
-        current_ci: float,
-        year_constructed: int,
-        initial_ci: float = 99.99,
-    ) -> list[tuple[int, float, str]]:
-        """Calculate historical condition index values using exponential decay."""
-        current_date = datetime.now()
-
-        years = current_date.year - year_constructed
-        age_months = years * 12 + current_date.month - 1
-
-        if age_months <= 0:
-            return [(0, current_ci, current_date.strftime("%Y-%m"))]
-
-        ratio = current_ci / initial_ci
-        if ratio <= 0 or ratio >= 1:
-            return self._generate_flat_series(current_ci, age_months, current_date)
-
-        try:
-            decay_rate = 1 - ratio ** (1 / age_months)
-            if decay_rate <= 0 or decay_rate >= 1:
-                return self._generate_flat_series(current_ci, age_months, current_date)
-        except (ValueError, ZeroDivisionError):
-            return self._generate_flat_series(current_ci, age_months, current_date)
-
-        time_series = []
-        sample_points = self._get_sample_points(age_months)
-
-        for months_ago in sample_points:
-            total_months = current_date.year * 12 + current_date.month - 1
-            past_total_months = total_months - months_ago
-            past_year = past_total_months // 12
-            past_month = (past_total_months % 12) + 1
-            date_str = f"{past_year:04d}-{past_month:02d}"
-
-            age_at_point = age_months - months_ago
-            if age_at_point <= 0:
-                ci_at_point = initial_ci
-            else:
-                ci_at_point = initial_ci * ((1 - decay_rate) ** age_at_point)
-
-            time_series.append((months_ago, round(ci_at_point, 2), date_str))
-
-        return time_series
-
-    def _get_sample_points(self, age_months: int) -> list[int]:
-        """Get adaptive sample points for historical condition-index series."""
-        max_months = self.settings.degradation.max_time_series_years * 12
-        effective_age = min(age_months, max_months)
-
-        points = [0]
-        for month in range(1, min(25, effective_age + 1)):
-            points.append(month)
-        for month in range(27, min(121, effective_age + 1), 3):
-            points.append(month)
-        for month in range(132, effective_age + 1, 12):
-            points.append(month)
-
-        if effective_age not in points and effective_age > 0:
-            points.append(effective_age)
-
-        return sorted(set(points))
-
-    def _generate_flat_series(
-        self,
-        current_ci: float,
-        age_months: int,
-        current_date: datetime,
-    ) -> list[tuple[int, float, str]]:
-        """Generate a flat time series for edge cases that cannot infer decay."""
-        sample_points = self._get_sample_points(age_months)
-        time_series = []
-
-        for months_ago in sample_points:
-            total_months = current_date.year * 12 + current_date.month - 1
-            past_total_months = total_months - months_ago
-            past_year = past_total_months // 12
-            past_month = (past_total_months % 12) + 1
-            date_str = f"{past_year:04d}-{past_month:02d}"
-            time_series.append((months_ago, round(current_ci, 2), date_str))
-
-        return time_series

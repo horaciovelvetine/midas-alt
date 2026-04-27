@@ -1,4 +1,4 @@
-"""Normalized export run settings (paths, layout, optional time series)."""
+"""Normalized export run settings for paths, format, and layout."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,7 +13,6 @@ class ExportConfig:
     file_name: str
     output_format: OutputFileType | str
     output_directory: Path | str = "."
-    include_time_series: bool = False
     layout: OutputLayoutSchema | str = OutputLayoutSchema.NORMALIZED
     generate_metadata: bool = True
     description: str = ""

@@ -1,28 +1,30 @@
-"""Sample work orders from configured status, priority, and text distributions."""
+"""Generate work orders by sampling rows from the workbook ``Work Orders`` sheet."""
 
 import random
 from datetime import datetime, timedelta
 
 from src.enums import WO_Priority, WO_Status, WO_TradeSkill
-from src.models import System, WorkOrder
+from src.models import System, WorkOrder, WorkOrderText
 
 from .data_generator_base import DataGeneratorBase
 
 
 class WorkOrderGenerator(DataGeneratorBase):
-    """Generate work orders using lifecycle-aware distribution sampling."""
+    """Generate work orders by copying categorical attributes and text from sampled templates."""
 
     def __init__(self, seed: int | None = None) -> None:
         """Initialize work-order generator with optional seed."""
         super().__init__(seed=seed)
 
     def generate_by_system(self, system: System) -> list[WorkOrder]:
-        """Generate work orders for a system using lifecycle-aware distributions."""
+        """Generate work orders for ``system`` from workbook-driven templates."""
         system_type = (
             self.config_data.get_system_type(system.system_type_key)
             if system.system_type_key
             else None
         )
+        system_title = getattr(system_type, "title", None)
+
         context = self.build_system_distribution_context(
             system=system, system_type=system_type
         )
@@ -39,13 +41,14 @@ class WorkOrderGenerator(DataGeneratorBase):
 
         work_orders: list[WorkOrder] = []
         for _ in range(wo_count):
+            template = self.config_data.sample_work_order_template(system_title)
             status = self._sample_work_order_status()
             request_datetime = self._sample_request_datetime(system, status)
             completion_datetime = self._sample_completion_datetime(
                 status, request_datetime
             )
             problem_description, requested_action, actions_taken = (
-                self._sample_text_fields(status, system_type)
+                self._text_fields_from_template(template, status)
             )
 
             work_orders.append(
@@ -53,9 +56,10 @@ class WorkOrderGenerator(DataGeneratorBase):
                     system_id=system.id,
                     facility_id=system.facility_id,
                     requesting_organization=self._sample_requesting_organization(),
+                    work_category=template.work_category if template else None,
                     status=status,
-                    priority=self._sample_work_order_priority(),
-                    trade=self._sample_trade_skill(),
+                    priority=self._priority_from_template(template),
+                    trade=self._trade_from_template(template),
                     request_datetime=request_datetime,
                     completion_datetime=completion_datetime,
                     problem_description=problem_description,
@@ -74,48 +78,45 @@ class WorkOrderGenerator(DataGeneratorBase):
         sampled = distribution.sample()
         return self._to_enum_value(WO_Status, sampled, fallback=WO_Status.SUBMITTED)
 
-    def _sample_work_order_priority(self) -> WO_Priority:
-        distribution = self.settings.get_value(
-            "generated_work_order_priority_distribution"
-        )
-        sampled = distribution.sample()
-        return self._to_enum_value(WO_Priority, sampled, fallback=WO_Priority.ROUTINE)
-
-    def _sample_trade_skill(self) -> WO_TradeSkill:
-        return random.choice(list(WO_TradeSkill))
-
     def _sample_requesting_organization(self) -> str | None:
         return self.config_data.get_random_work_order_requesting_organization()
 
-    def _sample_text_fields(
-        self, status: WO_Status, system_type
+    def _trade_from_template(self, template: WorkOrderText | None) -> WO_TradeSkill:
+        """Resolve the sampled template's trade to a :class:`WO_TradeSkill` value."""
+        if template is None:
+            return random.choice(list(WO_TradeSkill))
+        resolved = self._to_enum_value(WO_TradeSkill, template.trade, fallback=None)
+        return resolved if resolved is not None else random.choice(list(WO_TradeSkill))
+
+    def _priority_from_template(self, template: WorkOrderText | None) -> WO_Priority:
+        """Resolve the sampled template's Work Category to a :class:`WO_Priority`."""
+        if template is None:
+            return WO_Priority.ROUTINE
+        return self._to_enum_value(
+            WO_Priority, template.work_category, fallback=WO_Priority.ROUTINE
+        )
+
+    def _text_fields_from_template(
+        self, template: WorkOrderText | None, status: WO_Status
     ) -> tuple[str | None, str | None, str | None]:
-        system_title = getattr(system_type, "title", None)
-        sampled = self.config_data.sample_work_order_text(system_title)
-        if sampled is None:
+        """Pull problem/requested/actions text from ``template``, gated by ``status``."""
+        if template is None:
             base_problem = "example text"
             base_requested = "example text"
             base_actions = "example text"
         else:
-            base_problem = sampled.problem_description
-            base_requested = sampled.requested_action
-            base_actions = sampled.action_taken
-
-        problem_description = base_problem if base_problem else "example text"
-        requested_action = base_requested if base_requested else "example text"
+            base_problem = template.problem_description or "example text"
+            base_requested = template.requested_action or "example text"
+            base_actions = template.action_taken or "example text"
 
         if status == WO_Status.COMPLETED:
-            actions_taken = base_actions if base_actions else "example text"
+            actions_taken: str | None = base_actions
         elif status == WO_Status.IN_PROGRESS:
-            actions_taken = (
-                (base_actions if base_actions else "example text")
-                if random.random() < 0.5
-                else None
-            )
+            actions_taken = base_actions if random.random() < 0.5 else None
         else:
             actions_taken = None
 
-        return problem_description, requested_action, actions_taken
+        return base_problem, base_requested, actions_taken
 
     def _sample_request_datetime(self, system: System, status: WO_Status) -> datetime:
         now = datetime.now()
@@ -159,7 +160,10 @@ class WorkOrderGenerator(DataGeneratorBase):
         if sampled is None:
             return fallback
         text = str(sampled).strip()
+        if not text:
+            return fallback
+        normalized = text.lower()
         for enum_value in enum_cls:
-            if text.lower() in {enum_value.name.lower(), str(enum_value.value).lower()}:
+            if normalized in {enum_value.name.lower(), str(enum_value.value).lower()}:
                 return enum_value
         return fallback

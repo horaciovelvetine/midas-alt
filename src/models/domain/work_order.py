@@ -20,7 +20,6 @@ class WorkOrder:
     # W/O Setup
     requesting_organization: str | None = None
     work_category: str | None = None
-    room_area: str | None = None
 
     # Date/Time(s)
     request_datetime: datetime | None = None

@@ -111,7 +111,6 @@ class DataTransformer:
                     "system_id": work_order.system_id,
                     "requesting_organization": work_order.requesting_organization,
                     "work_category": work_order.work_category,
-                    "room_area": work_order.room_area,
                     "impacts_mission": work_order.impacts_mission,
                     "status": work_order.status.value if work_order.status else None,
                     "priority": (

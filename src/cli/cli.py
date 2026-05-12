@@ -63,14 +63,30 @@ def display_welcome() -> None:
 
 
 def run_cli() -> None:
-    """Run the CLI application with menu navigation."""
+    """Run the CLI application with menu navigation.
+
+    Persists any unsaved ``MidasSettings`` changes on every exit path so
+    interactive edits made via the configuration menu or the simulation shell
+    are not lost on quit, Ctrl-C, or unhandled crash.
+    """
+    from src.cli.handlers.settings_persistence import (
+        force_save_on_exit,
+        maybe_prompt_save,
+    )
+
     display_welcome()
     initialize_configuration()
     try:
         get_main_menu().run()
     except KeyboardInterrupt:
         console.print("\n[dim]Goodbye.[/dim]")
+        try:
+            maybe_prompt_save()
+        finally:
+            force_save_on_exit()
         sys.exit(0)
+    finally:
+        force_save_on_exit()
 
 
 # ============================================================================

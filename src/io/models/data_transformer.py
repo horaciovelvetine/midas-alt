@@ -1,29 +1,25 @@
 """Transform domain entities to exportable formats."""
 
-from typing import TYPE_CHECKING
+from __future__ import annotations
 
 import pandas as pd
 
-from src.config.app_state import get_app_state
+from src.config.midas_config_data import MidasConfigData
 from src.models import Facility, Installation, System, WorkOrder
-
-if TYPE_CHECKING:
-    from src.config.settings import MIDASSettings
 
 
 class DataTransformer:
     """Build normalized tables, denormalized rows, and nested dicts for exporters."""
 
-    def __init__(
-        self,
-        settings: "MIDASSettings | None" = None,
-    ) -> None:
-        """Use ``settings`` or the current application state for reference lookups."""
-        self.settings = settings or get_app_state().settings
+    def __init__(self) -> None:
+        """Use the ``MidasConfigData`` singleton for reference lookups."""
+        self.config_data = MidasConfigData()
 
     def _facility_type_title(self, facility: Facility) -> str:
         """Resolve facility type title from denormalized data or reference lookup."""
-        facility_type = self.settings.get_facility_type(facility.facility_type_key or 0)
+        facility_type = self.config_data.get_facility_type(
+            facility.facility_type_key or 0
+        )
         return (facility.facility_type_title or "").strip() or (
             facility_type.title if facility_type else ""
         )
@@ -36,20 +32,14 @@ class DataTransformer:
         work_orders: list[WorkOrder],
     ) -> dict[str, pd.DataFrame | None]:
         """Return keyed DataFrames for each normalized export table."""
-        # Build lookup for facilities and systems
-        facilities_by_install = {}
+        facilities_by_install: dict[str, list[Facility]] = {}
         for f in facilities:
-            if f.installation_id not in facilities_by_install:
-                facilities_by_install[f.installation_id] = []
-            facilities_by_install[f.installation_id].append(f)
+            facilities_by_install.setdefault(f.installation_id, []).append(f)
 
-        systems_by_facility = {}
+        systems_by_facility: dict[str, list[System]] = {}
         for s in systems:
-            if s.facility_id not in systems_by_facility:
-                systems_by_facility[s.facility_id] = []
-            systems_by_facility[s.facility_id].append(s)
+            systems_by_facility.setdefault(s.facility_id, []).append(s)
 
-        # Create installations table
         installations_rows = []
         for install in installations:
             installations_rows.append(
@@ -64,10 +54,9 @@ class DataTransformer:
                 }
             )
 
-        # Create facilities table
         facilities_rows = []
         for facility in facilities:
-            facility_type = self.settings.get_facility_type(
+            facility_type = self.config_data.get_facility_type(
                 facility.facility_type_key or 0
             )
             facilities_rows.append(
@@ -94,10 +83,9 @@ class DataTransformer:
                 }
             )
 
-        # Create systems table
         systems_rows = []
         for system in systems:
-            system_type = self.settings.get_system_type(system.system_type_key or 0)
+            system_type = self.config_data.get_system_type(system.system_type_key or 0)
             systems_rows.append(
                 {
                     "id": system.id,
@@ -138,7 +126,7 @@ class DataTransformer:
                 }
             )
 
-        tables = {
+        return {
             "installations": (
                 pd.DataFrame(installations_rows) if installations_rows else None
             ),
@@ -146,8 +134,6 @@ class DataTransformer:
             "systems": pd.DataFrame(systems_rows) if systems_rows else None,
             "work_orders": pd.DataFrame(work_orders_rows) if work_orders_rows else None,
         }
-
-        return tables
 
     def create_denormalized_rows(
         self,
@@ -157,11 +143,10 @@ class DataTransformer:
         work_orders: list[WorkOrder],
     ) -> list[dict]:
         """One flat dict per work order with denormalized installation/facility/system fields."""
-        # Build lookups
         install_map = {i.id: i for i in installations}
         facility_map = {f.id: f for f in facilities}
-
         system_map = {s.id: s for s in systems}
+
         rows = []
         for work_order in work_orders:
             system = system_map.get(work_order.system_id or "")
@@ -174,10 +159,10 @@ class DataTransformer:
             if not install:
                 continue
 
-            facility_type = self.settings.get_facility_type(
+            facility_type = self.config_data.get_facility_type(
                 facility.facility_type_key or 0
             )
-            system_type = self.settings.get_system_type(system.system_type_key or 0)
+            system_type = self.config_data.get_system_type(system.system_type_key or 0)
 
             row = {
                 "installation_id": install.id,
@@ -233,27 +218,22 @@ class DataTransformer:
         systems: list[System],
         work_orders: list[WorkOrder],
     ) -> dict:
-        """Nested list/dict tree: installations → facilities → systems → work orders."""
-        # Build lookups
-        facilities_by_install = {}
+        """Nested list/dict tree: installations -> facilities -> systems -> work orders."""
+        facilities_by_install: dict[str, list[Facility]] = {}
         for f in facilities:
-            if f.installation_id not in facilities_by_install:
-                facilities_by_install[f.installation_id] = []
-            facilities_by_install[f.installation_id].append(f)
+            facilities_by_install.setdefault(f.installation_id, []).append(f)
 
-        systems_by_facility = {}
+        systems_by_facility: dict[str, list[System]] = {}
         for s in systems:
-            if s.facility_id not in systems_by_facility:
-                systems_by_facility[s.facility_id] = []
-            systems_by_facility[s.facility_id].append(s)
+            systems_by_facility.setdefault(s.facility_id, []).append(s)
 
         work_orders_by_system: dict[str, list[WorkOrder]] = {}
         for work_order in work_orders:
             if not work_order.system_id:
                 continue
-            if work_order.system_id not in work_orders_by_system:
-                work_orders_by_system[work_order.system_id] = []
-            work_orders_by_system[work_order.system_id].append(work_order)
+            work_orders_by_system.setdefault(work_order.system_id, []).append(
+                work_order
+            )
 
         data = []
         for install in installations:
@@ -285,7 +265,7 @@ class DataTransformer:
                 }
 
                 for system in systems_by_facility.get(facility.id, []):
-                    system_type = self.settings.get_system_type(
+                    system_type = self.config_data.get_system_type(
                         system.system_type_key or 0
                     )
                     system_data = {

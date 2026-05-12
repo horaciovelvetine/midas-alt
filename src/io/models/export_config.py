@@ -49,4 +49,7 @@ class ExportConfig:
     @property
     def metadata_path(self) -> Path:
         """Get the path for the metadata file."""
-        return self.output_directory / f"{self.file_name}_metadata.json"
+        from src.config.midas_settings import MidasSettings
+
+        suffix = MidasSettings().get_value("metadata_file_suffix")
+        return self.output_directory / f"{self.file_name}{suffix}"

@@ -5,8 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from src.config.app_state import get_app_state
-from src.config.settings import MIDASSettings
+from src.config.midas_settings import MidasSettings
 from src.io.enums import OutputFileType, OutputLayoutSchema
 from src.io.file_formatting import CSVFormatter, ExcelFormatter
 from src.models import Facility, Installation, System, WorkOrder
@@ -26,23 +25,20 @@ class DataExporter:
         layout: OutputLayoutSchema | str = OutputLayoutSchema.NORMALIZED,
         generate_metadata: bool = True,
         description: str = "",
-        settings: MIDASSettings | None = None,
     ) -> None:
         """Initialize the data exporter.
 
         Args:
             file_name: Base name for the output file (without extension).
-            output_format: Format for export (csv, xlsx). Simulation ``OutputFormat`` is accepted.
-            output_directory: Directory where file will be saved.
-            layout: Output layout. Simulation ``OutputLayout`` is accepted.
+            output_format: Format for export (csv, xlsx).
+            output_directory: Directory where files will be saved.
+            layout: Output layout (normalized or denormalized).
             generate_metadata: Whether to generate a metadata JSON file.
             description: Optional description for the dataset.
-            settings: Application settings for reference data.
-
         """
         from src.simulation.data_generation import DataGenerator
 
-        self.settings = settings or get_app_state().settings
+        self.settings = MidasSettings()
 
         self.config = ExportConfig(
             file_name=file_name,
@@ -53,23 +49,20 @@ class DataExporter:
             description=description,
         )
 
-        self.generator = DataGenerator(settings=self.settings)
-        self.transformer = DataTransformer(settings=self.settings)
-
+        self.generator = DataGenerator()
+        self.transformer = DataTransformer()
         self.formatter = self._create_formatter()
 
     @classmethod
-    def from_config(
-        cls, config: ExportConfig, settings: MIDASSettings | None = None
-    ) -> DataExporter:
-        """Build an exporter from an existing :class:`ExportConfig` (directory already created)."""
+    def from_config(cls, config: ExportConfig) -> DataExporter:
+        """Build an exporter from an existing :class:`ExportConfig`."""
         from src.simulation.data_generation import DataGenerator
 
         obj = cls.__new__(cls)
-        obj.settings = settings or get_app_state().settings
+        obj.settings = MidasSettings()
         obj.config = config
-        obj.generator = DataGenerator(settings=obj.settings)
-        obj.transformer = DataTransformer(settings=obj.settings)
+        obj.generator = DataGenerator()
+        obj.transformer = DataTransformer()
         obj.formatter = obj._create_formatter()
         return obj
 
@@ -99,16 +92,7 @@ class DataExporter:
         method: str = "default",
         target_count: int | None = None,
     ) -> Path:
-        """Generate simulated data and export to file.
-
-        Args:
-            method: Generation method - "default", "installations", or "facilities".
-            target_count: Number of items to generate (required for installations/facilities).
-
-        Returns:
-            Path to the created file.
-
-        """
+        """Generate simulated data and export to file."""
         if method == "installations":
             if target_count is None:
                 raise ValueError(

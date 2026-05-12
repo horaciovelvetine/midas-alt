@@ -4,6 +4,7 @@ from rich.console import Console
 
 from src.cli.handlers.config_handlers import (
     handle_reload_configuration,
+    handle_save_configuration,
     handle_view_config_values,
     handle_view_facility_types_summary,
     handle_view_installation_locations_summary,
@@ -48,7 +49,12 @@ def get_configuration_menu():
     builder.add_item(
         "Reload Configuration Values from File",
         handle_reload_configuration,
-        description="Reload configuration values from the Excel file after making changes",
+        description="Reload reference data and JSON state from disk after making changes",
+    )
+    builder.add_item(
+        "Save Current Settings to JSON",
+        handle_save_configuration,
+        description="Persist current MIDAS settings to output/midas_settings.json so they reload at next startup",
     )
     return builder.build()
 
@@ -102,7 +108,7 @@ def get_main_menu():
         description="Load or generate one installation and run a live time-stepped simulation shell (dashboard includes work-order status counts)",
     )
     builder.add_item(
-        "Simulation",
+        "Data Generation & Schema",
         handle_simulation,
         description="Explore generated data (including work orders), inspect hierarchies, and export simulation datasets",
     )
@@ -111,9 +117,4 @@ def get_main_menu():
         handle_configuration,
         description="View and manage facility types, system types, and configuration values",
     )
-    # builder.add_item(
-    #     "ML Prediction",
-    #     handle_ml_prediction,
-    #     description="Train models, extract features, and predict degradation timing",
-    # )
     return builder.build()

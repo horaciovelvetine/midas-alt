@@ -2,6 +2,7 @@
 
 from .config_handlers import (
     handle_reload_configuration,
+    handle_save_configuration,
     handle_view_config_values,
     handle_view_facility_types_summary,
     handle_view_installation_locations_summary,
@@ -18,6 +19,7 @@ from .simulate_handlers import (
 __all__ = [
     # Config handlers
     "handle_reload_configuration",
+    "handle_save_configuration",
     "handle_view_config_values",
     "handle_view_facility_types_summary",
     "handle_view_installation_locations_summary",

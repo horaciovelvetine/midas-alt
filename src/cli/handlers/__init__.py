@@ -1,6 +1,7 @@
 """CLI command handlers."""
 
 from .config_handlers import (
+    handle_edit_midas_settings,
     handle_reload_configuration,
     handle_save_configuration,
     handle_view_config_values,
@@ -18,6 +19,7 @@ from .simulate_handlers import (
 
 __all__ = [
     # Config handlers
+    "handle_edit_midas_settings",
     "handle_reload_configuration",
     "handle_save_configuration",
     "handle_view_config_values",

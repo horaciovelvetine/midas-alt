@@ -12,6 +12,7 @@ from rich.text import Text
 from rich.tree import Tree
 
 from src.cli.utils import DisplayHelper, InputHelper
+from src.config import MidasSettings
 from src.enums.entity_type import EntityType
 from src.enums.work_order import WO_Status
 from src.models import Facility, System, WorkOrder
@@ -69,6 +70,53 @@ def build_installation_summary_panel(session: SimulationSession) -> Panel:
     return Panel(grid, title="Installation Details", border_style="green")
 
 
+def build_settings_snapshot_panel(session: SimulationSession | None = None) -> Panel:
+    """Render a compact snapshot of simulation-relevant settings beside the inspect panel.
+
+    Shows the scalar tunables that most influence ongoing simulation behavior
+    (degradation thresholds, random degradation chances, generation defaults,
+    and age maxima) and tags an "[unsaved]" marker when ``MidasSettings`` has
+    edits that have not yet been persisted.
+    """
+    del session
+    settings = MidasSettings()
+
+    grid = Table.grid(expand=True)
+    grid.add_column(style="cyan")
+    grid.add_column(style="green", justify="right")
+
+    snapshot_keys = (
+        ("Degraded Threshold (CI)", "condition_index_degraded_threshold"),
+        ("Initial CI Default", "initial_condition_index_default"),
+        ("Random Facility Degrade %", "random_facility_degradation_chance"),
+        ("Random System Degrade %", "random_system_degradation_chance"),
+        ("Max Facility Age", "maximum_facility_age"),
+        ("Max System Age", "maximum_system_age"),
+    )
+    for label, name in snapshot_keys:
+        try:
+            value = settings.get_value(name)
+        except KeyError:
+            continue
+        grid.add_row(label, _format_setting_value_for_panel(value))
+
+    title = "Settings Snapshot"
+    if settings.is_dirty():
+        title += " [unsaved]"
+    border_style = "red" if settings.is_dirty() else "blue"
+    hint = Text("Press 's' to edit settings.", style="dim")
+    return Panel(Group(grid, hint), title=title, border_style=border_style)
+
+
+def _format_setting_value_for_panel(value: object) -> str:
+    """Compact, single-cell-friendly stringifier for the snapshot panel."""
+    if isinstance(value, float):
+        return f"{value:g}"
+    if isinstance(value, tuple) and len(value) == 2:
+        return f"{value[0]}-{value[1]}"
+    return str(value)
+
+
 def build_simulation_overview_panel(session: SimulationSession) -> Panel:
     """Create the top-row panel for clock, playback, and pause state."""
     grid = Table.grid(expand=True)
@@ -120,13 +168,17 @@ def _format_ci_and_status(condition_index: float | None, status_label: str) -> s
 
 def _facility_title(session: SimulationSession, facility: Facility) -> str:
     """Human-readable facility label from reference data."""
-    facility_type = session.settings.config_data.get_facility_type(facility.facility_type_key or 0)
+    facility_type = session.settings.config_data.get_facility_type(
+        facility.facility_type_key or 0
+    )
     return facility_type.title if facility_type else facility.id
 
 
 def _system_title(session: SimulationSession, system: System) -> str:
     """Human-readable system label from reference data."""
-    system_type = session.settings.config_data.get_system_type(system.system_type_key or 0)
+    system_type = session.settings.config_data.get_system_type(
+        system.system_type_key or 0
+    )
     return system_type.title if system_type else system.id
 
 
@@ -644,7 +696,9 @@ def build_installation_details(session: SimulationSession):
 def build_facility_details(session: SimulationSession, facility: Facility):
     """Create the inspection view for a focused facility."""
     state = session.get_facility_state(facility.id)
-    facility_type = session.settings.config_data.get_facility_type(facility.facility_type_key or 0)
+    facility_type = session.settings.config_data.get_facility_type(
+        facility.facility_type_key or 0
+    )
     systems = session.systems_by_facility.get(facility.id, [])
 
     detail = Table.grid(padding=(0, 1))
@@ -678,7 +732,9 @@ def build_facility_details(session: SimulationSession, facility: Facility):
 def build_system_details(session: SimulationSession, system: System):
     """Create the inspection view for a focused system."""
     state = session.get_system_state(system.id)
-    system_type = session.settings.config_data.get_system_type(system.system_type_key or 0)
+    system_type = session.settings.config_data.get_system_type(
+        system.system_type_key or 0
+    )
 
     detail = Table.grid(padding=(0, 1))
     detail.add_column(style="cyan")
@@ -757,6 +813,11 @@ def build_controls_panel() -> Panel:
         "f",
         "Toggle systems",
         "Show or hide systems under facilities in the installation graph.",
+    )
+    table.add_row(
+        "s",
+        "Edit settings",
+        "Pause and open the MIDAS settings editor (saved to JSON on return / exit).",
     )
     table.add_row("h", "Hide / show help", "Toggle this controls panel.")
     table.add_row(
@@ -1028,7 +1089,9 @@ def _format_facility_label(
     selected: bool,
 ) -> str:
     """Format a facility label for the dependency tree."""
-    facility_type = session.settings.config_data.get_facility_type(facility.facility_type_key or 0)
+    facility_type = session.settings.config_data.get_facility_type(
+        facility.facility_type_key or 0
+    )
     title = facility_type.title if facility_type else facility.id
     label = (
         f"{title} [{facility.dependency_position}] "
@@ -1046,7 +1109,9 @@ def _format_system_label(
     selected: bool,
 ) -> str:
     """Format a system label for the dependency tree."""
-    system_type = session.settings.config_data.get_system_type(system.system_type_key or 0)
+    system_type = session.settings.config_data.get_system_type(
+        system.system_type_key or 0
+    )
     title = system_type.title if system_type else system.id
     label = f"{title} (CI {_format_ci(runtime_state.condition_index)}, {runtime_state.status_label})"
     if selected:

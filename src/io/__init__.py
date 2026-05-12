@@ -5,22 +5,24 @@ from __future__ import annotations
 from importlib import import_module
 
 __all__ = [
+    "ConfigDataLoadResult",
     "ConfigWorkbookLoadError",
-    "ConfigWorkbookLoader",
     "DataExporter",
     "DataTransformer",
     "ExportConfig",
+    "MidasConfigDataLoader",
     "OutputFileType",
     "OutputLayoutSchema",
     "SimulationDataLoader",
 ]
 
 _EXPORTS = {
+    "ConfigDataLoadResult": ("src.io.loaders", "ConfigDataLoadResult"),
     "ConfigWorkbookLoadError": ("src.io.loaders", "ConfigWorkbookLoadError"),
-    "ConfigWorkbookLoader": ("src.io.loaders", "ConfigWorkbookLoader"),
     "DataExporter": ("src.io.models", "DataExporter"),
     "DataTransformer": ("src.io.models", "DataTransformer"),
     "ExportConfig": ("src.io.models", "ExportConfig"),
+    "MidasConfigDataLoader": ("src.io.loaders", "MidasConfigDataLoader"),
     "OutputFileType": ("src.io.enums", "OutputFileType"),
     "OutputLayoutSchema": ("src.io.enums", "OutputLayoutSchema"),
     "SimulationDataLoader": ("src.io.loaders", "SimulationDataLoader"),

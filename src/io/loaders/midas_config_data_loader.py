@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-
 from pandas import ExcelFile
 
 from src.config.midas_config_data import MidasConfigData

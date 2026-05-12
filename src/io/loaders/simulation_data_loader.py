@@ -7,7 +7,8 @@ from typing import Any
 
 import pandas as pd
 
-from src.config.settings import MIDASSettings
+from src.config.midas_config_data import MidasConfigData
+from src.config.midas_settings import MidasSettings
 from src.enums import UFCGrade, WO_Priority, WO_Status, WO_TradeSkill
 from src.models import (
     DataStore,
@@ -24,9 +25,10 @@ _REQUIRED_TABLES = ("installations", "facilities", "systems", "work_orders")
 class SimulationDataLoader:
     """Rehydrate domain entities from normalized CSV or XLSX exports."""
 
-    def __init__(self, settings: MIDASSettings) -> None:
-        """Store settings used to interpret export naming conventions."""
-        self.settings = settings
+    def __init__(self) -> None:
+        """Initialize loader; settings/reference data come from singletons."""
+        self.settings = MidasSettings()
+        self.config_data = MidasConfigData()
 
     def load(self, dataset_path: str | Path) -> DataStore:
         """Load a normalized dataset directory or workbook."""
@@ -44,7 +46,7 @@ class SimulationDataLoader:
     def _load_csv_tables(self, dataset_directory: Path) -> dict[str, pd.DataFrame]:
         """Load normalized CSV tables from an export directory."""
         tables: dict[str, pd.DataFrame] = {}
-        separator = self.settings.output.csv_table_separator
+        separator = self.settings.get_value("csv_table_separator")
 
         for table_name in _REQUIRED_TABLES:
             candidates = sorted(dataset_directory.glob(f"*{separator}{table_name}.csv"))
@@ -70,7 +72,7 @@ class SimulationDataLoader:
             "installations": "Installations",
             "facilities": "Facilities",
             "systems": "Systems",
-            "work_orders": self.settings.output.excel_sheet_work_orders,
+            "work_orders": self.settings.get_value("excel_sheet_work_orders"),
         }
 
         missing = [
@@ -150,7 +152,7 @@ class SimulationDataLoader:
             title_from_export = _text(row, "title")
             resolved_title = title_from_export
             if not resolved_title and type_key is not None:
-                ft = self.settings.get_facility_type(type_key)
+                ft = self.config_data.get_facility_type(type_key)
                 resolved_title = ft.title if ft else None
             facilities.append(
                 Facility(
@@ -195,7 +197,6 @@ class SimulationDataLoader:
                     system_id=_text(row, "system_id"),
                     requesting_organization=_text(row, "requesting_organization"),
                     work_category=_text(row, "work_category"),
-                    room_area=_text(row, "room_area"),
                     request_datetime=_datetime_value(row, "request_datetime"),
                     completion_datetime=_datetime_value(row, "completion_datetime"),
                     status=_enum_value(WO_Status, row.get("status")),

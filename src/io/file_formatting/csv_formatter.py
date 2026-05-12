@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from src.config.midas_settings import MidasSettings
 from src.models import Installation, Facility, System, WorkOrder
 from .base_formatter import BaseFormatter
 
@@ -61,8 +62,7 @@ class CSVFormatter(BaseFormatter):
                 name: len(df) if df is not None else 0 for name, df in tables.items()
             }
 
-        # Write each table to a separate file
-        separator = self.transformer.settings.output.csv_table_separator
+        separator = MidasSettings().get_value("csv_table_separator")
         for table_name, df in tables.items():
             if df is not None and not df.empty:
                 file_path = (

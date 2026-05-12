@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from src.config.midas_settings import MidasSettings
 from src.models import Installation, Facility, System, WorkOrder
 from .base_formatter import BaseFormatter
 
@@ -56,15 +57,15 @@ class ExcelFormatter(BaseFormatter):
         tables = self.transformer.create_normalized_tables(
             installations, facilities, systems, work_orders
         )
-        output = self.transformer.settings.output
+        settings = MidasSettings()
+        work_orders_sheet = settings.get_value("excel_sheet_work_orders")
+        metadata_sheet = settings.get_value("excel_sheet_metadata")
 
-        # Update metadata
         if metadata:
             metadata["record_counts"] = {
                 name: len(df) if df is not None else 0 for name, df in tables.items()
             }
 
-        # Write to Excel with separate sheets
         with pd.ExcelWriter(self.config.file_path, engine="openpyxl") as writer:
             for table_name, df in tables.items():
                 if df is not None and not df.empty:
@@ -72,14 +73,13 @@ class ExcelFormatter(BaseFormatter):
                         "installations": "Installations",
                         "facilities": "Facilities",
                         "systems": "Systems",
-                        "work_orders": output.excel_sheet_work_orders,
+                        "work_orders": work_orders_sheet,
                     }
                     sheet_name = sheet_name_map.get(
                         table_name, table_name.replace("_", " ").title()
                     )
                     df.to_excel(writer, sheet_name=sheet_name, index=False)
 
-            # Write metadata sheet if requested
             if metadata:
                 meta_df = pd.DataFrame(
                     [
@@ -89,9 +89,7 @@ class ExcelFormatter(BaseFormatter):
                     ]
                 )
                 if not meta_df.empty:
-                    meta_df.to_excel(
-                        writer, sheet_name=output.excel_sheet_metadata, index=False
-                    )
+                    meta_df.to_excel(writer, sheet_name=metadata_sheet, index=False)
 
         # Note: No separate metadata file for Excel - metadata is included as a sheet
 
@@ -112,17 +110,16 @@ class ExcelFormatter(BaseFormatter):
             installations, facilities, systems, work_orders
         )
         df = pd.DataFrame(rows)
-        output = self.transformer.settings.output
+        settings = MidasSettings()
+        main_sheet = settings.get_value("excel_sheet_main")
+        metadata_sheet = settings.get_value("excel_sheet_metadata")
 
-        # Update metadata
         if metadata:
             metadata["record_counts"] = {"main_data": len(df)}
 
-        # Write to Excel
         with pd.ExcelWriter(self.config.file_path, engine="openpyxl") as writer:
-            df.to_excel(writer, sheet_name=output.excel_sheet_main, index=False)
+            df.to_excel(writer, sheet_name=main_sheet, index=False)
 
-            # Write metadata sheet if requested
             if metadata:
                 meta_df = pd.DataFrame(
                     [
@@ -132,9 +129,7 @@ class ExcelFormatter(BaseFormatter):
                     ]
                 )
                 if not meta_df.empty:
-                    meta_df.to_excel(
-                        writer, sheet_name=output.excel_sheet_metadata, index=False
-                    )
+                    meta_df.to_excel(writer, sheet_name=metadata_sheet, index=False)
 
         # Note: No separate metadata file for Excel - metadata is included as a sheet
 

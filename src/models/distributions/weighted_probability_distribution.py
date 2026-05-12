@@ -53,6 +53,22 @@ class WeightedProbabilityDistribution(DistributionBase):
         del context
         return self.select_random_segment().sample()
 
+    def to_dict(self) -> dict:
+        """Serialize to a plain dict for JSON encoding."""
+        return {
+            "distribution_type": "WeightedProbabilityDistribution",
+            "segments": [seg.to_dict() for seg in self._segments],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "WeightedProbabilityDistribution":
+        """Reconstruct from a dict produced by :meth:`to_dict`."""
+        segments = [
+            WeightedProbabilitySegment(seg["percentage"], seg["value"])
+            for seg in data["segments"]
+        ]
+        return cls(segments)
+
     def __str__(self) -> str:
         """Return a readable representation for diagnostics."""
         segments_str = ",\n".join("\t" + str(s) for s in self._segments)

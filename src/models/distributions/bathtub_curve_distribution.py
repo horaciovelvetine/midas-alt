@@ -26,6 +26,25 @@ class BathtubCurveDistribution(EventRateDistribution):
         self.wearout_start_ratio = wearout_start_ratio
         self.max_ratio = max_ratio
 
+    def to_dict(self) -> dict:
+        """Serialize to a plain dict for JSON encoding."""
+        return {
+            "distribution_type": "BathtubCurveDistribution",
+            "params": {
+                "early_peak_rate": self.early_peak_rate,
+                "useful_life_rate": self.useful_life_rate,
+                "wearout_peak_rate": self.wearout_peak_rate,
+                "early_end_ratio": self.early_end_ratio,
+                "wearout_start_ratio": self.wearout_start_ratio,
+                "max_ratio": self.max_ratio,
+            },
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "BathtubCurveDistribution":
+        """Reconstruct from a dict produced by :meth:`to_dict`."""
+        return cls(**data.get("params", {}))
+
     def rate(self, context: DistributionContext | None = None) -> float:
         """Return event rate from early-life, useful-life, and wearout phases."""
         x = self._resolve_age_ratio(context, max_ratio=self.max_ratio)

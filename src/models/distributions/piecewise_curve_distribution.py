@@ -15,6 +15,18 @@ class PiecewiseCurveDistribution(EventRateDistribution):
         if self.points[0][0] == self.points[-1][0]:
             raise ValueError("Piecewise points must span a non-zero x-range")
 
+    def to_dict(self) -> dict:
+        """Serialize to a plain dict for JSON encoding."""
+        return {
+            "distribution_type": "PiecewiseCurveDistribution",
+            "points": [list(p) for p in self.points],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "PiecewiseCurveDistribution":
+        """Reconstruct from a dict produced by :meth:`to_dict`."""
+        return cls([tuple(p) for p in data["points"]])
+
     def rate(self, context: DistributionContext | None = None) -> float:
         """Return interpolated event rate for the current age ratio."""
         x = self._resolve_age_ratio(context)

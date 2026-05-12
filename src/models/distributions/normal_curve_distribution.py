@@ -23,6 +23,23 @@ class NormalCurveDistribution(EventRateDistribution):
         self.mean = mean
         self.stddev = stddev
 
+    def to_dict(self) -> dict:
+        """Serialize to a plain dict for JSON encoding."""
+        return {
+            "distribution_type": "NormalCurveDistribution",
+            "params": {
+                "baseline_rate": self.baseline_rate,
+                "amplitude": self.amplitude,
+                "mean": self.mean,
+                "stddev": self.stddev,
+            },
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "NormalCurveDistribution":
+        """Reconstruct from a dict produced by :meth:`to_dict`."""
+        return cls(**data.get("params", {}))
+
     def rate(self, context: DistributionContext | None = None) -> float:
         """Return event rate based on Gaussian age-ratio response."""
         x = self._resolve_age_ratio(context)

@@ -91,6 +91,10 @@ class WeightedProbabilitySegment:
             return float(parsed)
         return self._value.strip()
 
+    def to_dict(self) -> dict:
+        """Serialize to a plain dict for JSON encoding."""
+        return {"percentage": self._percentage, "value": self._value}
+
     def __str__(self) -> str:
         """Return a readable representation for diagnostics."""
         return f"WeightedProbabilitySegment(percentage={self._percentage}, value='{self._value}')"

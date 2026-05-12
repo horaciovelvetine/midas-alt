@@ -8,8 +8,7 @@ from rich.table import Table
 
 from src.cli.simulation_shell import SimulationShell
 from src.cli.utils import DisplayHelper, InputHelper, NavigationHelper
-from src.config import MIDASSettings
-from src.config.app_state import get_app_state
+from src.config import MidasConfigData, MidasSettings
 from src.io import DataExporter, SimulationDataLoader
 from src.models import Facility, Installation, System, WorkOrder
 from src.simulation import DataGenerator, SimulationSession
@@ -19,9 +18,14 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 
-def _get_settings() -> MIDASSettings:
-    """Get settings from the application state."""
-    return get_app_state().settings
+def _get_config_data() -> MidasConfigData:
+    """Return the reference-data singleton."""
+    return MidasConfigData()
+
+
+def _get_settings() -> MidasSettings:
+    """Return the runtime-settings singleton."""
+    return MidasSettings()
 
 
 def _display_selection_summary(selections: dict) -> None:
@@ -96,9 +100,11 @@ def _display_selection_summary(selections: dict) -> None:
     DisplayHelper.print_table(table)
 
 
-def _format_facility(facility: Facility, settings: MIDASSettings) -> str:
+def _format_facility(facility: Facility, settings: MidasSettings) -> str:
     """Format a facility for display."""
-    facility_type = settings.get_facility_type(facility.facility_type_key or 0)
+    facility_type = _get_config_data().get_facility_type(
+        facility.facility_type_key or 0
+    )
     title = (
         facility_type.title
         if facility_type
@@ -122,9 +128,9 @@ def _format_facility(facility: Facility, settings: MIDASSettings) -> str:
     return "\n".join(lines)
 
 
-def _format_system(system: System, settings: MIDASSettings) -> str:
+def _format_system(system: System, settings: MidasSettings) -> str:
     """Format a system for display."""
-    system_type = settings.get_system_type(system.system_type_key or 0)
+    system_type = _get_config_data().get_system_type(system.system_type_key or 0)
     title = system_type.title if system_type else f"System {system.system_type_key}"
 
     lines = [
@@ -237,7 +243,7 @@ def _build_installation_selection_rows(
     return rows
 
 
-def _prompt_for_installation_id(result, settings: MIDASSettings) -> str | None:
+def _prompt_for_installation_id(result, settings: MidasSettings) -> str | None:
     """Prompt the user to select an installation when multiple are available."""
     if not result.installations:
         return None
@@ -287,7 +293,7 @@ def _prompt_for_installation_id(result, settings: MIDASSettings) -> str | None:
     return result.installations[selection - 1].id
 
 
-def _load_or_generate_simulation_result(settings: MIDASSettings):
+def _load_or_generate_simulation_result(settings: MidasSettings):
     """Prompt the user to load exported data or generate a default installation."""
     NavigationHelper.show_help(
         "Simulation Data Source",
@@ -305,8 +311,7 @@ def _load_or_generate_simulation_result(settings: MIDASSettings):
     if source is None or source is InputHelper.QUIT_TO_MENU:
         return None
     if source == "generate":
-        generator = DataGenerator(settings=settings)
-        return generator.generate_installation()
+        return DataGenerator().generate_installation()
 
     dataset_path = InputHelper.get_input_with_backspace(
         "Enter normalized dataset directory or XLSX workbook path",
@@ -314,8 +319,7 @@ def _load_or_generate_simulation_result(settings: MIDASSettings):
     )
     if dataset_path is None:
         return None
-    loader = SimulationDataLoader(settings=settings)
-    return loader.load(Path(dataset_path))
+    return SimulationDataLoader().load(Path(dataset_path))
 
 
 def handle_run_time_simulation() -> None:
@@ -360,7 +364,7 @@ def handle_run_time_simulation() -> None:
 def handle_view_simulated_data_examples() -> None:
     """View simulated data examples with interactive navigation."""
     settings = _get_settings()
-    generator = DataGenerator(settings=settings, seed=None)  # Random seed for variety
+    generator = DataGenerator(seed=None)
 
     # Generate an installation for exploration
     result = generator.generate_installation()
@@ -422,7 +426,7 @@ def handle_view_simulated_data_examples() -> None:
             facilities_table.add_column("WOs", style="green", justify="center")
 
             for idx, facility in enumerate(facilities, start=1):
-                facility_type = settings.get_facility_type(
+                facility_type = _get_config_data().get_facility_type(
                     facility.facility_type_key or 0
                 )
                 title = facility_type.title if facility_type else f"Facility {idx}"
@@ -480,7 +484,7 @@ def handle_view_simulated_data_examples() -> None:
                 "\n[bold cyan]Navigation:[/bold cyan] [green]Installation[/green] > [yellow]Facility[/yellow]\n"
             )
 
-            facility_type = settings.get_facility_type(
+            facility_type = _get_config_data().get_facility_type(
                 current_facility.facility_type_key or 0
             )
             title = facility_type.title if facility_type else "Unknown Facility"
@@ -517,7 +521,9 @@ def handle_view_simulated_data_examples() -> None:
             systems_table.add_column("WOs", style="green", justify="center")
 
             for idx, system in enumerate(facility_systems, start=1):
-                system_type = settings.get_system_type(system.system_type_key or 0)
+                system_type = _get_config_data().get_system_type(
+                    system.system_type_key or 0
+                )
                 title = system_type.title if system_type else f"System {idx}"
                 ci = (
                     f"{system.condition_index:.1f}" if system.condition_index else "N/A"
@@ -564,7 +570,9 @@ def handle_view_simulated_data_examples() -> None:
                 "[yellow]Facility[/yellow] > [magenta]System[/magenta]\n"
             )
 
-            system_type = settings.get_system_type(current_system.system_type_key or 0)
+            system_type = _get_config_data().get_system_type(
+                current_system.system_type_key or 0
+            )
             title = system_type.title if system_type else "Unknown System"
 
             DisplayHelper.print_panel(
@@ -935,7 +943,6 @@ def handle_generate_data() -> None:
             layout=selections["layout"],
             generate_metadata=selections["generate_metadata"],
             description=selections["description"],
-            settings=settings,
         )
 
         file_path = exporter.generate_and_export(
@@ -952,7 +959,7 @@ def handle_generate_data() -> None:
                 DisplayHelper.print_success(f"Metadata file: {exporter.metadata_path}")
             else:
                 DisplayHelper.print_success(
-                    f"Metadata sheet: {settings.output.excel_sheet_metadata} (in {file_path.name})"
+                    f"Metadata sheet: {settings.get_value('excel_sheet_metadata')} (in {file_path.name})"
                 )
         InputHelper.wait_for_continue()
 
@@ -969,7 +976,7 @@ def handle_generate_data() -> None:
 def handle_view_facility_and_system() -> None:
     """Generate a facility and allow user to select a system to view."""
     settings = _get_settings()
-    generator = DataGenerator(settings=settings)
+    generator = DataGenerator()
 
     result = generator.generate_installation()
     facilities = result.facilities
@@ -1000,7 +1007,7 @@ def handle_view_facility_and_system() -> None:
     systems_table.add_column("WOs", style="green", justify="center")
 
     for idx, system in enumerate(facility_systems, start=1):
-        system_type = settings.get_system_type(system.system_type_key or 0)
+        system_type = _get_config_data().get_system_type(system.system_type_key or 0)
         title = system_type.title if system_type else f"System {idx}"
         wo_count = len(_work_orders_for_system(system, flat_work_orders))
         systems_table.add_row(
@@ -1097,9 +1104,8 @@ def handle_quick_generate() -> None:
     console.print("Generating sample data with default settings...\n")
 
     settings = _get_settings()
-    generator = DataGenerator(settings=settings)
+    generator = DataGenerator()
 
-    # Generate data
     result = generator.generate_installation()
     installation = result.installations[0]
     facilities = result.facilities

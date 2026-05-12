@@ -43,6 +43,7 @@ def create_distribution_from_spec(spec: dict[str, Any]) -> DistributionBase:
         ]
         return WeightedProbabilityDistribution(segments)
 
+    # Default values for these distributions...
     if dist_type == "normal":
         return NormalCurveDistribution(
             baseline_rate=float(spec.get("baseline_rate", 0.1)),

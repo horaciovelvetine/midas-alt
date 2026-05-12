@@ -120,13 +120,13 @@ def _format_ci_and_status(condition_index: float | None, status_label: str) -> s
 
 def _facility_title(session: SimulationSession, facility: Facility) -> str:
     """Human-readable facility label from reference data."""
-    facility_type = session.settings.get_facility_type(facility.facility_type_key or 0)
+    facility_type = session.settings.config_data.get_facility_type(facility.facility_type_key or 0)
     return facility_type.title if facility_type else facility.id
 
 
 def _system_title(session: SimulationSession, system: System) -> str:
     """Human-readable system label from reference data."""
-    system_type = session.settings.get_system_type(system.system_type_key or 0)
+    system_type = session.settings.config_data.get_system_type(system.system_type_key or 0)
     return system_type.title if system_type else system.id
 
 
@@ -644,7 +644,7 @@ def build_installation_details(session: SimulationSession):
 def build_facility_details(session: SimulationSession, facility: Facility):
     """Create the inspection view for a focused facility."""
     state = session.get_facility_state(facility.id)
-    facility_type = session.settings.get_facility_type(facility.facility_type_key or 0)
+    facility_type = session.settings.config_data.get_facility_type(facility.facility_type_key or 0)
     systems = session.systems_by_facility.get(facility.id, [])
 
     detail = Table.grid(padding=(0, 1))
@@ -678,7 +678,7 @@ def build_facility_details(session: SimulationSession, facility: Facility):
 def build_system_details(session: SimulationSession, system: System):
     """Create the inspection view for a focused system."""
     state = session.get_system_state(system.id)
-    system_type = session.settings.get_system_type(system.system_type_key or 0)
+    system_type = session.settings.config_data.get_system_type(system.system_type_key or 0)
 
     detail = Table.grid(padding=(0, 1))
     detail.add_column(style="cyan")
@@ -864,7 +864,7 @@ def _build_facility_inspect_table(session: SimulationSession) -> Table:
     for index, facility in enumerate(
         sorted(session.facilities, key=_facility_sort_key), start=1
     ):
-        facility_type = session.settings.get_facility_type(
+        facility_type = session.settings.config_data.get_facility_type(
             facility.facility_type_key or 0
         )
         runtime = session.get_facility_state(facility.id)
@@ -1028,7 +1028,7 @@ def _format_facility_label(
     selected: bool,
 ) -> str:
     """Format a facility label for the dependency tree."""
-    facility_type = session.settings.get_facility_type(facility.facility_type_key or 0)
+    facility_type = session.settings.config_data.get_facility_type(facility.facility_type_key or 0)
     title = facility_type.title if facility_type else facility.id
     label = (
         f"{title} [{facility.dependency_position}] "
@@ -1046,7 +1046,7 @@ def _format_system_label(
     selected: bool,
 ) -> str:
     """Format a system label for the dependency tree."""
-    system_type = session.settings.get_system_type(system.system_type_key or 0)
+    system_type = session.settings.config_data.get_system_type(system.system_type_key or 0)
     title = system_type.title if system_type else system.id
     label = f"{title} (CI {_format_ci(runtime_state.condition_index)}, {runtime_state.status_label})"
     if selected:

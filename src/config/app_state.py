@@ -1,16 +1,20 @@
-"""Application state management for CLI.
+"""Thin facade exposing the MidasSettings + MidasConfigData singletons.
 
-Provides a central state container that holds the loaded configuration
-and tracks initialization status, errors, and warnings.
+``ApplicationState`` orchestrates startup loading (JSON state then workbook
+reference data) and reports a :class:`LoadResult` for CLI status messages.
+The actual configuration lives on the ``MidasSettings`` and ``MidasConfigData``
+singletons; this class only owns the load-status bookkeeping.
 """
+
+from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src.io.loaders import ConfigWorkbookLoadError, ConfigWorkbookLoader
-
-from .settings import MIDASSettings
+from src.config.midas_config_data import MidasConfigData
+from src.config.midas_settings import MidasSettings
+from src.io.loaders import ConfigWorkbookLoadError, MidasConfigDataLoader
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +29,7 @@ class LoadResult:
     facility_types_loaded: int = 0
     system_types_loaded: int = 0
     installation_locations_loaded: int = 0
+    state_file_applied: bool = False
 
     def add_error(self, message: str) -> None:
         """Add an error message."""
@@ -40,39 +45,63 @@ class LoadResult:
 class ApplicationState:
     """Mutable application state for CLI and runtime.
 
-    This class holds the loaded configuration settings and tracks
-    the status of initialization. It provides a clean interface
-    for the CLI to access configuration without global mutable state.
+    Holds the load-status report and convenience handles for the singletons.
+    Use :meth:`initialize` to load JSON state then workbook reference data.
     """
 
-    settings: MIDASSettings
+    settings: MidasSettings
+    config_data: MidasConfigData
     load_result: LoadResult = field(default_factory=LoadResult)
 
     @classmethod
-    def initialize(cls, config_path: Path | None = None) -> "ApplicationState":
-        """Load workbook settings (or defaults) and return new state with ``LoadResult``."""
+    def initialize(
+        cls,
+        config_path: Path | None = None,
+        state_path: Path | None = None,
+    ) -> "ApplicationState":
+        """Load JSON state and workbook reference data, returning the new state."""
         load_result = LoadResult()
 
-        # Determine config path
-        if config_path is None:
-            config_path = MIDASSettings.default_config_path()
+        settings = MidasSettings()
 
-        # Try to load settings
+        resolved_state_path = state_path or MidasSettings.default_state_path()
         try:
-            if not config_path.exists():
+            applied = settings.load_state(resolved_state_path)
+            load_result.state_file_applied = applied
+            if not applied:
                 load_result.add_warning(
-                    f"Configuration file not found: {config_path}\nUsing default settings."
+                    f"No state file at {resolved_state_path}; using default settings."
                 )
-                settings = MIDASSettings.with_defaults()
-            else:
-                settings = ConfigWorkbookLoader().load(config_path)
-                load_result.facility_types_loaded = len(settings.facility_types)
-                load_result.system_types_loaded = len(settings.system_types)
-                load_result.installation_locations_loaded = len(
-                    settings.installation_locations
-                )
+        except (OSError, ValueError) as exc:
+            logger.exception("Failed to load MidasSettings state file")
+            load_result.add_warning(
+                f"State file load error at {resolved_state_path}: {exc}"
+            )
 
-                # Add success info
+        resolved_config_path = (
+            config_path
+            if config_path is not None
+            else MidasSettings.DEFAULT_CONFIG_DATA_PATH
+        )
+        config_data = MidasConfigData()
+
+        try:
+            if not Path(resolved_config_path).exists():
+                load_result.add_warning(
+                    f"Configuration file not found: {resolved_config_path}\n"
+                    "Using empty reference data."
+                )
+                config_data.clear()
+            else:
+                summary = MidasConfigDataLoader().load(resolved_config_path)
+                load_result.facility_types_loaded = summary.facility_types_loaded
+                load_result.system_types_loaded = summary.system_types_loaded
+                load_result.installation_locations_loaded = (
+                    summary.installation_locations_loaded
+                )
+                for warning in summary.warnings:
+                    load_result.add_warning(warning)
+
                 if load_result.facility_types_loaded == 0:
                     load_result.add_warning(
                         "No facility types loaded from configuration."
@@ -86,20 +115,23 @@ class ApplicationState:
                         "No installation locations loaded from configuration."
                     )
 
-        except (ConfigWorkbookLoadError, OSError, TypeError, ValueError) as e:
+        except (ConfigWorkbookLoadError, OSError, TypeError, ValueError) as exc:
             logger.exception("Failed to load configuration")
             load_result.add_error(
-                f"Configuration load error: expected readable workbook (got {e})"
+                f"Configuration load error: expected readable workbook (got {exc})"
             )
-            settings = MIDASSettings.with_defaults()
+            config_data.clear()
 
-        return cls(settings=settings, load_result=load_result)
+        return cls(settings=settings, config_data=config_data, load_result=load_result)
 
     @classmethod
     def with_defaults(cls) -> "ApplicationState":
-        """Create application state with default settings (no file load)."""
+        """Create application state without loading workbook or state file."""
+        MidasSettings.reset()
+        MidasConfigData.reset()
         return cls(
-            settings=MIDASSettings.with_defaults(),
+            settings=MidasSettings(),
+            config_data=MidasConfigData(),
             load_result=LoadResult(
                 success=True,
                 warnings=["Using default settings (no configuration file loaded)."],
@@ -124,7 +156,6 @@ class ApplicationState:
     def get_status_message(self) -> str:
         """Get a formatted status message for display."""
         lines = []
-
         if self.load_result.success:
             lines.append("[green]Configuration loaded successfully![/green]")
             lines.append(f"  Facility types: {self.load_result.facility_types_loaded}")
@@ -132,6 +163,10 @@ class ApplicationState:
             lines.append(
                 f"  Installation locations: {self.load_result.installation_locations_loaded}"
             )
+            if self.load_result.state_file_applied:
+                lines.append(
+                    f"  State file: {MidasSettings.default_state_path()} (loaded)"
+                )
         else:
             lines.append("[red]Configuration load failed![/red]")
 
@@ -149,9 +184,15 @@ class ApplicationState:
 
         return "\n".join(lines)
 
-    def reload(self, config_path: Path | None = None) -> "ApplicationState":
-        """Replace state by running ``initialize`` again (see ``config_path`` there)."""
-        return ApplicationState.initialize(config_path)
+    def reload(
+        self,
+        config_path: Path | None = None,
+        state_path: Path | None = None,
+    ) -> "ApplicationState":
+        """Reload by re-running :meth:`initialize`."""
+        return ApplicationState.initialize(
+            config_path=config_path, state_path=state_path
+        )
 
 
 # Global application state singleton for CLI
@@ -173,6 +214,8 @@ def set_app_state(state: ApplicationState) -> None:
 
 
 def reset_app_state() -> None:
-    """Reset the global application state (forces re-initialization on next access)."""
+    """Reset the global application state and clear singletons (tests)."""
     global _app_state
     _app_state = None
+    MidasSettings.reset()
+    MidasConfigData.reset()

@@ -1,8 +1,6 @@
-"""Display utilities for configuration visualization.
+"""Display helpers for rendering MidasSettings and MidasConfigData summaries."""
 
-Provides functions to create Rich tables and panels for displaying
-configuration values, facility types, system types, and distributions.
-"""
+from __future__ import annotations
 
 from rich.console import Group
 from rich.panel import Panel
@@ -17,12 +15,21 @@ from src.models.distributions import (
     WeightedProbabilityDistribution,
 )
 
-from .settings import MIDASSettings
+from .midas_config_data import MidasConfigData
+from .midas_settings import MidasSettings
+from .setting_state import (
+    DistributionSettingState,
+    FloatSettingState,
+    IntegerSettingState,
+    RangeSettingState,
+    StringSettingState,
+)
 
 
-def create_facility_types_table(settings: MIDASSettings) -> Table:
-    """Rich table of loaded facility types from ``settings`` (or empty-state row)."""
-    facility_types = list(settings.facility_types.values())
+def create_facility_types_table(config_data: MidasConfigData | None = None) -> Table:
+    """Rich table of loaded facility types (or empty-state row)."""
+    data = config_data or MidasConfigData()
+    facility_types = list(data.facility_types.values())
 
     table = Table(
         title=f"Loaded Facility Types: {len(facility_types)} total",
@@ -52,9 +59,10 @@ def create_facility_types_table(settings: MIDASSettings) -> Table:
     return table
 
 
-def create_system_types_table(settings: MIDASSettings) -> Table:
-    """Rich table of loaded system types from ``settings`` (or empty-state row)."""
-    system_types = list(settings.system_types.values())
+def create_system_types_table(config_data: MidasConfigData | None = None) -> Table:
+    """Rich table of loaded system types (or empty-state row)."""
+    data = config_data or MidasConfigData()
+    system_types = list(data.system_types.values())
 
     table = Table(
         title=f"Loaded System Types: {len(system_types)} total",
@@ -85,9 +93,12 @@ def create_system_types_table(settings: MIDASSettings) -> Table:
     return table
 
 
-def create_installation_locations_table(settings: MIDASSettings) -> Table:
+def create_installation_locations_table(
+    config_data: MidasConfigData | None = None,
+) -> Table:
     """Rich table of installation location reference rows (or empty-state row)."""
-    locations = settings.installation_locations
+    data = config_data or MidasConfigData()
+    locations = data.installation_locations
 
     table = Table(
         title=f"Loaded Installation Locations: {len(locations)} total",
@@ -125,104 +136,55 @@ def _format_facility_keys(facility_keys: tuple[int, ...]) -> str:
     if len(facility_keys) <= 5:
         return ", ".join(str(k) for k in facility_keys)
 
-    # Truncate if too many
     shown = ", ".join(str(k) for k in facility_keys[:5])
     return f"{shown}... (+{len(facility_keys) - 5} more)"
 
 
-def create_config_values_panel(settings: MIDASSettings) -> Panel:
-    """Panel grouping degradation, simulation, output, and distribution tables."""
-    # --- Degradation Settings ---
-    deg_table = Table(show_header=False, box=None, padding=(0, 2))
-    deg_table.add_column("Setting", style="cyan", width=45)
-    deg_table.add_column("Value", style="white")
+def create_config_values_panel(settings: MidasSettings | None = None) -> Panel:
+    """Panel grouping all configurable setting values from MidasSettings."""
+    cfg = settings or MidasSettings()
 
-    deg = settings.degradation
-    deg_table.add_row(
-        "Condition Index Degraded Threshold",
-        str(deg.condition_index_degraded_threshold),
-    )
-    deg_table.add_row("Resiliency Grade Threshold", str(deg.resiliency_grade_threshold))
-    deg_table.add_row("Initial Condition Index", str(deg.initial_condition_index))
+    scalar_table = Table(show_header=False, box=None, padding=(0, 2))
+    scalar_table.add_column("Setting", style="cyan", width=55)
+    scalar_table.add_column("Value", style="white")
 
-    # --- Simulation Settings ---
-    sim_table = Table(show_header=False, box=None, padding=(0, 2))
-    sim_table.add_column("Setting", style="cyan", width=45)
-    sim_table.add_column("Value", style="white")
+    distribution_blocks: list[tuple[str, Table]] = []
 
-    sim = settings.simulation
-    low, high = sim.facilities_per_installation
-    facilities_str = str(low) if low == high else f"{low}-{high}"
-    sim_table.add_row("Facilities Per Installation", facilities_str)
+    for name, state in cfg.iter_states():
+        if isinstance(state, DistributionSettingState):
+            distribution_blocks.append(
+                (state.label or name, _create_count_distribution_table(state.value))
+            )
+            continue
 
-    low, high = sim.dependency_chain_group_range
-    dep_chain_str = str(low) if low == high else f"{low}-{high}"
-    sim_table.add_row("Dependency Chain Group Range", dep_chain_str)
-    sim_table.add_row("Maximum Vertical Depth", str(sim.max_vertical_depth))
+        if isinstance(state, RangeSettingState):
+            low, high = state.value
+            value_str = str(low) if low == high else f"{low}-{high}"
+        elif isinstance(state, FloatSettingState):
+            value_str = f"{state.value:g}"
+        elif isinstance(state, IntegerSettingState):
+            value_str = str(state.value)
+        elif isinstance(state, StringSettingState):
+            value_str = f'"{state.value}"'
+        else:
+            value_str = str(getattr(state, "value", ""))
 
-    sim_table.add_row("Maximum System Age", str(sim.maximum_system_age))
-    sim_table.add_row("Maximum Facility Age", str(sim.maximum_facility_age))
-    sim_table.add_row(
-        "Facility Condition Randomly Degrades Chance",
-        f"{sim.facility_condition_randomly_degrades_chance}%",
-    )
+        scalar_table.add_row(state.label or name, value_str)
 
-    # --- Output Settings ---
-    out_table = Table(show_header=False, box=None, padding=(0, 2))
-    out_table.add_column("Setting", style="cyan", width=45)
-    out_table.add_column("Value", style="white")
-
-    out = settings.output
-    out_table.add_row("Excel Sheet Main Name", out.excel_sheet_main)
-    out_table.add_row("Excel Sheet Metadata Name", out.excel_sheet_metadata)
-    out_table.add_row("Excel Sheet Work Orders Name", out.excel_sheet_work_orders)
-    out_table.add_row("Metadata File Suffix", out.metadata_file_suffix)
-    out_table.add_row("CSV Table Separator", f'"{out.csv_table_separator}"')
-
-    # --- Distributions ---
-    dist = settings.distributions
-
-    dist_table_ci = _create_distribution_table(dist.condition_index, "Value Range")
-    dist_table_age = _create_distribution_table(dist.age, "Value Range")
-    dist_table_grade = _create_distribution_table(dist.grade, "Grade", prefix="Grade ")
-    dist_table_wo_count = _create_count_distribution_table(dist.work_order_count)
-    dist_table_wo_status = _create_distribution_table(dist.work_order_status, "Status")
-    dist_table_wo_priority = _create_distribution_table(
-        dist.work_order_priority, "Priority"
-    )
-    dist_table_wo_org = _create_distribution_table(
-        dist.work_order_requesting_organization, "Organization"
-    )
-
-    content = Group(
-        Text("DEGRADATION SETTINGS", style="bold cyan"),
-        deg_table,
-        Text("\nSIMULATION SETTINGS", style="bold cyan"),
-        sim_table,
-        Text("\nOUTPUT SETTINGS", style="bold cyan"),
-        out_table,
-        Text("\nSIMULATION PROBABILITY DISTRIBUTIONS", style="bold cyan"),
-        Text("\nSimulated Condition Index Distribution:", style="bold yellow"),
-        dist_table_ci,
-        Text("\nSimulated Age Distribution:", style="bold yellow"),
-        dist_table_age,
-        Text("\nSimulated Grade Distribution:", style="bold yellow"),
-        dist_table_grade,
-        Text("\nSimulated Work Order Count Distribution:", style="bold yellow"),
-        dist_table_wo_count,
-        Text("\nSimulated Work Order Status Distribution:", style="bold yellow"),
-        dist_table_wo_status,
-        Text("\nSimulated Work Order Priority Distribution:", style="bold yellow"),
-        dist_table_wo_priority,
-        Text(
-            "\nSimulated Work Order Requesting Organization Distribution:",
-            style="bold yellow",
-        ),
-        dist_table_wo_org,
-    )
+    content_items: list = [
+        Text("MIDAS SETTINGS", style="bold cyan"),
+        scalar_table,
+    ]
+    if distribution_blocks:
+        content_items.append(Text("\nDATA GENERATION DISTRIBUTIONS", style="bold cyan"))
+        for label, table in distribution_blocks:
+            content_items.append(Text(f"\n{label}:", style="bold yellow"))
+            content_items.append(table)
 
     return Panel(
-        content, title="MIDAS Configuration Values Summary", border_style="green"
+        Group(*content_items),
+        title="MIDAS Configuration Values Summary",
+        border_style="green",
     )
 
 
@@ -240,14 +202,14 @@ def _create_parameter_table(rows: list[tuple[str, str]]) -> Table:
 
 
 def _create_count_distribution_table(distribution) -> Table:
-    """Create a table showing the configured work-order count distribution."""
+    """Create a table showing a generic distribution's parameters or segments."""
     if distribution is None:
         return _create_parameter_table([("Status", "Not configured")])
 
     if isinstance(distribution, WeightedProbabilityDistribution):
         return _create_distribution_table(distribution, "Sampled Value")
 
-    rows = [("Type", type(distribution).__name__)]
+    rows: list[tuple[str, str]] = [("Type", type(distribution).__name__)]
     if isinstance(distribution, BathtubCurveDistribution):
         rows.extend(
             [
@@ -322,13 +284,20 @@ def _create_distribution_table(
     return table
 
 
-def create_settings_summary_text(settings: MIDASSettings) -> str:
+def create_settings_summary_text(
+    settings: MidasSettings | None = None,
+    config_data: MidasConfigData | None = None,
+) -> str:
     """Short newline-separated counts and key simulation/degradation scalars."""
+    cfg = settings or MidasSettings()
+    data = config_data or MidasConfigData()
+
+    facilities_range = cfg.get_value("facilities_per_installation")
     lines = [
-        f"Facility Types Loaded: {len(settings.facility_types)}",
-        f"System Types Loaded: {len(settings.system_types)}",
-        f"Degradation Threshold: {settings.degradation.condition_index_degraded_threshold}",
-        f"Facilities per Installation: {settings.simulation.facilities_per_installation}",
-        f"Max Vertical Depth: {settings.simulation.max_vertical_depth}",
+        f"Facility Types Loaded: {len(data.facility_types)}",
+        f"System Types Loaded: {len(data.system_types)}",
+        f"Degradation Threshold: {cfg.get_value('condition_index_degraded_threshold')}",
+        f"Facilities per Installation: {facilities_range[0]}-{facilities_range[1]}",
+        f"Max Vertical Depth: {cfg.get_value('maximum_vertical_dependency_depth')}",
     ]
     return "\n".join(lines)

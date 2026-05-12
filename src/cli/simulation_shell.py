@@ -13,12 +13,18 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.table import Table
 
+from src.cli.handlers.settings_editor import run_settings_editor
+from src.cli.handlers.settings_persistence import (
+    force_save_on_exit,
+    maybe_prompt_save,
+)
 from src.cli.simulation_shell_panels import (
     build_controls_panel,
     build_dependency_tree,
     build_inspect_panel,
     build_installation_summary_panel,
     build_mission_alert_panel,
+    build_settings_snapshot_panel,
     build_simulation_overview_panel,
     build_work_order_summary_panel,
     collect_mission_alert_items,
@@ -86,6 +92,10 @@ class SimulationShell:
             )
         else:
             DisplayHelper.print_info("Exited simulation shell.", title="Simulation")
+        try:
+            maybe_prompt_save()
+        finally:
+            force_save_on_exit()
 
     def render_dashboard(self):
         """Build the full live dashboard renderable."""
@@ -102,6 +112,7 @@ class SimulationShell:
         body_row = Table.grid(expand=True)
         body_row.add_column(ratio=2)
         body_row.add_column(ratio=1)
+        body_row.add_column(ratio=1)
         body_row.add_row(
             Panel(
                 build_dependency_tree(
@@ -112,6 +123,7 @@ class SimulationShell:
                 border_style="cyan",
             ),
             build_inspect_panel(self.session),
+            build_settings_snapshot_panel(self.session),
         )
 
         renderables: list[object] = [top_row]
@@ -166,6 +178,12 @@ class SimulationShell:
             self.session.pause(reason="Paused for mission alerts.")
             with self._suspended_live(live=live, key_reader=key_reader):
                 prompt_mission_alert_browser(self.session)
+            return
+        if key in {"s", "S"}:
+            self.session.pause(reason="Paused for settings.")
+            with self._suspended_live(live=live, key_reader=key_reader):
+                run_settings_editor()
+                maybe_prompt_save()
             return
 
     @contextmanager

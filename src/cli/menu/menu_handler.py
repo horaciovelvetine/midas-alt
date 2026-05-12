@@ -16,7 +16,14 @@ console = Console()
 
 
 def _quit_midas() -> None:
-    """Print exit message and terminate the process."""
+    """Print exit message, persist any unsaved settings, and terminate the process."""
+    from src.cli.handlers.settings_persistence import (
+        force_save_on_exit,
+        maybe_prompt_save,
+    )
+
+    maybe_prompt_save()
+    force_save_on_exit()
     console.print("\n[cyan]Exiting MIDAS[/cyan]\n")
     sys.exit(0)
 

@@ -22,6 +22,7 @@ from .distributions import (
     BathtubCurveDistribution,
     PiecewiseCurveDistribution,
     EventRateDistribution,
+    distribution_from_dict,
 )
 
 __all__ = [
@@ -45,4 +46,5 @@ __all__ = [
     "BathtubCurveDistribution",
     "PiecewiseCurveDistribution",
     "EventRateDistribution",
+    "distribution_from_dict",
 ]

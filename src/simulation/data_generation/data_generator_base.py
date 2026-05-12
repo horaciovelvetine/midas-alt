@@ -4,8 +4,8 @@ import random
 from datetime import datetime
 from typing import Any
 
-from src.config.app_state import get_app_state
-from src.config.settings import MIDASSettings
+from src.config.midas_config_data import MidasConfigData
+from src.config.midas_settings import MidasSettings
 from src.enums import UFCGrade
 from src.models import DistributionContext, EventRateDistribution, System, SystemType
 
@@ -13,50 +13,52 @@ from src.models import DistributionContext, EventRateDistribution, System, Syste
 class DataGeneratorBase:
     """Sampling and aggregation helpers shared by installation through work-order generators.
 
-    Reads probability segments and event-rate distributions from ``MIDASSettings.distributions``.
+    Reads probability distributions from the ``MidasSettings`` singleton and
+    reference-data lookups from the ``MidasConfigData`` singleton.
     """
 
-    def __init__(self, settings: MIDASSettings | None, seed: int | None) -> None:
-        """Bind ``settings`` and optionally seed ``random`` for reproducible generation.
+    def __init__(self, seed: int | None = None) -> None:
+        """Optionally seed ``random`` for reproducible generation.
 
         Args:
-            settings: MIDAS configuration; when omitted, uses ``get_app_state().settings``.
             seed: When not ``None``, passed to ``random.seed``.
         """
-        self.settings: MIDASSettings = settings or get_app_state().settings
+        self.settings: MidasSettings = MidasSettings()
+        self.config_data: MidasConfigData = MidasConfigData()
         if seed is not None:
             random.seed(seed)
 
     def sample_year_constructed(self, max_age: int) -> int:
-        """Return a construction year from ``distributions.age``, capped by ``max_age`` (years)."""
-        rnd_age = int(self.settings.distributions.age.select_random_segment().sample())
+        """Return a construction year capped by ``max_age`` (years)."""
+        distribution = self.settings.get_value("generated_age_distribution")
+        rnd_age = int(distribution.select_random_segment().sample())
         age = min(rnd_age, max_age)
         return datetime.now().year - age
 
     def sample_condition_index(self) -> float:
-        """Sample from ``distributions.condition_index``; result rounded to two decimal places."""
-        sampled = (
-            self.settings.distributions.condition_index.select_random_segment().sample()
-        )
+        """Sample a starting condition index rounded to two decimal places."""
+        distribution = self.settings.get_value("generated_condition_index_distribution")
+        sampled = distribution.select_random_segment().sample()
         return round(float(sampled), 2)
 
     def sample_ufc_resiliency_grade(self) -> UFCGrade:
-        """Sample a UFC resiliency grade (G1-G4) from ``distributions.grade``; unmapped values use G1."""
-        sampled = self.settings.distributions.grade.select_random_segment().sample()
+        """Sample a UFC resiliency grade (G1-G4); unmapped values use G1."""
+        distribution = self.settings.get_value(
+            "generated_resiliency_grade_distribution"
+        )
+        sampled = distribution.select_random_segment().sample()
         str_key = str(int(sampled)) if isinstance(sampled, float) else str(sampled)
         return UFCGrade.from_value(str_key) or UFCGrade.G1
 
     def build_system_distribution_context(
         self, system: System, system_type: SystemType | None = None
     ) -> DistributionContext:
-        """Build ``DistributionContext`` for event-rate and other lifecycle-aware distributions.
-
-        ``life_expectancy_years`` comes from ``system_type`` when given, else from
-        ``settings.get_system_type(system.system_type_key)`` when a key is set.
-        """
+        """Build ``DistributionContext`` for lifecycle-aware distributions."""
         resolved_system_type = system_type
         if resolved_system_type is None and system.system_type_key is not None:
-            resolved_system_type = self.settings.get_system_type(system.system_type_key)
+            resolved_system_type = self.config_data.get_system_type(
+                system.system_type_key
+            )
 
         life_expectancy = (
             resolved_system_type.life_expectancy
@@ -80,7 +82,7 @@ class DataGeneratorBase:
         context: DistributionContext | None = None,
         horizon_years: float = 1.0,
     ) -> int:
-        """Non-negative integer count: Poisson path for ``EventRateDistribution``, else coerced ``sample()``."""
+        """Non-negative integer count: Poisson for ``EventRateDistribution``, else coerced ``sample()``."""
         if isinstance(distribution, EventRateDistribution):
             return distribution.sample_count(
                 context=context, horizon_years=horizon_years
@@ -97,7 +99,7 @@ class DataGeneratorBase:
             return 0
 
     def average_condition_index(self, entities: list[object]) -> float | None:
-        """Mean of defined ``condition_index`` values on ``entities`` (two decimals), or ``None`` if none."""
+        """Mean of defined ``condition_index`` values on ``entities`` (two decimals)."""
         values = [
             float(value)
             for value in (
@@ -110,7 +112,7 @@ class DataGeneratorBase:
         return round(sum(values) / len(values), 2)
 
     def random_choice(self, values: list[Any]) -> Any:
-        """Uniform random element from ``values``; raises ``ValueError`` when ``values`` is empty."""
+        """Uniform random element from ``values``."""
         if not values:
             raise ValueError("random_choice requires at least one value")
         return random.choice(values)

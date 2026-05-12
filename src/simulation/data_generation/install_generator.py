@@ -2,6 +2,7 @@
 
 from src.functions import generate_id
 from src.models import DataStore, Facility, Installation, System, WorkOrder
+
 from .data_generator_base import DataGeneratorBase
 from .facility_generator import FacilityGenerator
 
@@ -9,17 +10,17 @@ from .facility_generator import FacilityGenerator
 class InstallGenerator(DataGeneratorBase):
     """Generate installation roots and aggregate generated descendants."""
 
-    def __init__(self, settings=None, seed=None):
-        """Initialize installation generator with shared settings and seed."""
-        super().__init__(settings, seed)
+    def __init__(self, seed: int | None = None) -> None:
+        """Initialize installation generator with optional seed."""
+        super().__init__(seed=seed)
 
     def generate(
         self,
     ) -> tuple[Installation, list[Facility], list[System], list[WorkOrder]]:
         """Generate one installation and all downstream entities."""
         install = self._initialize_install_instance()
-        target_facility_count = self.settings.simulation.get_random_facility_count()
-        facility_generator = FacilityGenerator(settings=self.settings, seed=None)
+        target_facility_count = self.settings.get_random_facility_count()
+        facility_generator = FacilityGenerator(seed=None)
         facilities, systems, work_orders = facility_generator.generate_by_count(
             installation_id=install.id,
             count=target_facility_count,
@@ -51,13 +52,9 @@ class InstallGenerator(DataGeneratorBase):
             work_orders=work_orders,
         )
 
-    #! =========================================================
-    #! HELPERS
-    #! =========================================================
-
     def _initialize_install_instance(self) -> Installation:
         """Initialize an installation root entity."""
-        location = self.settings.get_random_location()
+        location = self.config_data.get_random_location()
         if location:
             return Installation(
                 id=generate_id(),

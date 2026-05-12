@@ -5,20 +5,21 @@ from datetime import datetime, timedelta
 
 from src.enums import WO_Priority, WO_Status, WO_TradeSkill
 from src.models import System, WorkOrder
+
 from .data_generator_base import DataGeneratorBase
 
 
 class WorkOrderGenerator(DataGeneratorBase):
     """Generate work orders using lifecycle-aware distribution sampling."""
 
-    def __init__(self, settings=None, seed=None):
-        """Initialize work-order generator with shared settings and seed."""
-        super().__init__(settings, seed)
+    def __init__(self, seed: int | None = None) -> None:
+        """Initialize work-order generator with optional seed."""
+        super().__init__(seed=seed)
 
     def generate_by_system(self, system: System) -> list[WorkOrder]:
         """Generate work orders for a system using lifecycle-aware distributions."""
         system_type = (
-            self.settings.get_system_type(system.system_type_key)
+            self.config_data.get_system_type(system.system_type_key)
             if system.system_type_key
             else None
         )
@@ -27,8 +28,11 @@ class WorkOrderGenerator(DataGeneratorBase):
         )
         horizon_years = max(1.0, float(system.age_years or 1))
 
+        wo_count_distribution = self.settings.get_value(
+            "generated_work_order_count_distribution"
+        )
         wo_count = self.sample_event_count(
-            self.settings.distributions.work_order_count,
+            wo_count_distribution,
             context=context,
             horizon_years=horizon_years,
         )
@@ -64,24 +68,30 @@ class WorkOrderGenerator(DataGeneratorBase):
         return work_orders
 
     def _sample_work_order_status(self) -> WO_Status:
-        sampled = self.settings.distributions.work_order_status.sample()
+        distribution = self.settings.get_value(
+            "generated_work_order_status_distribution"
+        )
+        sampled = distribution.sample()
         return self._to_enum_value(WO_Status, sampled, fallback=WO_Status.SUBMITTED)
 
     def _sample_work_order_priority(self) -> WO_Priority:
-        sampled = self.settings.distributions.work_order_priority.sample()
+        distribution = self.settings.get_value(
+            "generated_work_order_priority_distribution"
+        )
+        sampled = distribution.sample()
         return self._to_enum_value(WO_Priority, sampled, fallback=WO_Priority.ROUTINE)
 
     def _sample_trade_skill(self) -> WO_TradeSkill:
         return random.choice(list(WO_TradeSkill))
 
     def _sample_requesting_organization(self) -> str | None:
-        return self.settings.get_random_work_order_requesting_organization()
+        return self.config_data.get_random_work_order_requesting_organization()
 
     def _sample_text_fields(
         self, status: WO_Status, system_type
     ) -> tuple[str | None, str | None, str | None]:
         system_title = getattr(system_type, "title", None)
-        sampled = self.settings.sample_work_order_text(system_title)
+        sampled = self.config_data.sample_work_order_text(system_title)
         if sampled is None:
             base_problem = "example text"
             base_requested = "example text"
@@ -116,7 +126,6 @@ class WorkOrderGenerator(DataGeneratorBase):
         if start > now:
             start = now - timedelta(days=1)
 
-        # Open statuses skew recent; completed items can span full service life.
         if status == WO_Status.SUBMITTED:
             lower = max(start, now - timedelta(days=60))
         elif status == WO_Status.APPROVED:

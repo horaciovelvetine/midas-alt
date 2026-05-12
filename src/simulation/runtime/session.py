@@ -7,7 +7,7 @@ import warnings
 from dataclasses import dataclass, field
 from datetime import date
 
-from src.config.settings import MIDASSettings
+from src.config.midas_settings import MidasSettings
 from src.enums.entity_type import EntityType
 from src.enums.work_order import WO_Status
 from src.models import DataStore, Facility, Installation, System, WorkOrder
@@ -91,8 +91,8 @@ class SimulationSession:
     """Holds all mutable runtime state for an active simulation."""
 
     result: DataStore
-    settings: MIDASSettings
     clock: SimulationClock
+    settings: MidasSettings = field(default_factory=MidasSettings)
     history: ConditionHistoryStore = field(default_factory=ConditionHistoryStore)
     modules: list[SimulationModuleBase] = field(default_factory=list)
     pause_policies: list[SimulationModuleBase] = field(
@@ -146,7 +146,7 @@ class SimulationSession:
     def from_data_store(
         cls,
         data: DataStore,
-        settings: MIDASSettings,
+        settings: MidasSettings | None = None,
         installation_id: str | None = None,
         start_date: date | None = None,
         modules: list[SimulationModuleBase] | None = None,
@@ -156,7 +156,7 @@ class SimulationSession:
         selected = cls.select_installation_result(data, installation_id=installation_id)
         return cls(
             result=selected,
-            settings=settings,
+            settings=settings or MidasSettings(),
             clock=SimulationClock(current_date=start_date or date.today()),
             modules=modules or [],
             pause_policies=pause_policies or [CriticalStatePausePolicy()],
@@ -166,7 +166,7 @@ class SimulationSession:
     def from_generation_result(
         cls,
         result: DataStore,
-        settings: MIDASSettings,
+        settings: MidasSettings | None = None,
         installation_id: str | None = None,
         start_date: date | None = None,
         modules: list[SimulationModuleBase] | None = None,
@@ -384,6 +384,10 @@ class SimulationSession:
             self.pause(reason=pause_events[0].message)
         return events
 
+    def _condition_index_degraded_threshold(self) -> float:
+        """Return the configured threshold for degraded condition state."""
+        return float(self.settings.get_value("condition_index_degraded_threshold"))
+
     def get_system_state(self, system_id: str) -> EntityRuntimeState:
         """Return the runtime state for a system."""
         system = self.systems_by_id[system_id]
@@ -396,11 +400,8 @@ class SimulationSession:
             work_order for work_order in open_work_orders if work_order.impacts_mission
         ]
         condition_index = system.condition_index
-        degraded = (
-            condition_index is not None
-            and condition_index
-            <= self.settings.degradation.condition_index_degraded_threshold
-        )
+        threshold = self._condition_index_degraded_threshold()
+        degraded = condition_index is not None and condition_index <= threshold
         inoperable = condition_index is not None and condition_index <= 0
         mission_blocked = inoperable and bool(mission_work_orders)
         return EntityRuntimeState(
@@ -426,10 +427,9 @@ class SimulationSession:
             state.mission_impacting_open_work_orders for state in child_states
         )
         condition_index = facility.condition_index
+        threshold = self._condition_index_degraded_threshold()
         degraded = (
-            condition_index is not None
-            and condition_index
-            <= self.settings.degradation.condition_index_degraded_threshold
+            condition_index is not None and condition_index <= threshold
         ) or any(state.degraded for state in child_states)
         inoperable = (condition_index is not None and condition_index <= 0) or any(
             state.inoperable for state in child_states
@@ -460,10 +460,9 @@ class SimulationSession:
             state.mission_impacting_open_work_orders for state in facility_states
         )
         condition_index = self.installation.condition_index
+        threshold = self._condition_index_degraded_threshold()
         degraded = (
-            condition_index is not None
-            and condition_index
-            <= self.settings.degradation.condition_index_degraded_threshold
+            condition_index is not None and condition_index <= threshold
         ) or any(state.degraded for state in facility_states)
         inoperable = (condition_index is not None and condition_index <= 0) or any(
             state.inoperable for state in facility_states
@@ -519,9 +518,7 @@ class SimulationSession:
 
     def export_history_tables(self) -> dict[str, object]:
         """Return table-like history outputs for later export integration."""
-        return ConditionHistoryExportAdapter(
-            self.history, settings=self.settings
-        ).create_tables(
+        return ConditionHistoryExportAdapter(self.history).create_tables(
             installation=self.installation,
             facilities=self.facilities,
             systems=self.systems,

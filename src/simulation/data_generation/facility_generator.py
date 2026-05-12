@@ -5,6 +5,7 @@ from collections import defaultdict
 from src.enums import UFCGrade
 from src.functions import generate_id
 from src.models import DependencyPosition, Facility, System, WorkOrder
+
 from .data_generator_base import DataGeneratorBase
 from .system_generator import SystemGenerator
 
@@ -12,9 +13,9 @@ from .system_generator import SystemGenerator
 class FacilityGenerator(DataGeneratorBase):
     """Generate facilities and their descendant entities for installations."""
 
-    def __init__(self, settings=None, seed=None):
-        """Initialize facility generator with shared settings and seed."""
-        super().__init__(settings, seed)
+    def __init__(self, seed: int | None = None) -> None:
+        """Initialize facility generator with optional seed."""
+        super().__init__(seed=seed)
 
     def generate_by_count(
         self, installation_id: str, count: int
@@ -27,9 +28,10 @@ class FacilityGenerator(DataGeneratorBase):
         all_systems: list[System] = []
         all_work_orders: list[WorkOrder] = []
         created_facility_type_keys: list[int] = []
-        available_facility_types = list(self.settings.facility_types.keys())
+        available_facility_types = list(self.config_data.facility_types.keys())
         dependency_positions = self._generate_dependency_position_set(count)
-        system_generator = SystemGenerator(settings=self.settings, seed=None)
+        system_generator = SystemGenerator(seed=None)
+        max_facility_age = self.settings.get_value("maximum_facility_age")
 
         for idx in range(count):
             if available_facility_types:
@@ -44,15 +46,13 @@ class FacilityGenerator(DataGeneratorBase):
                 facility_type_key = idx + 1
 
             created_facility_type_keys.append(facility_type_key)
-            facility_type = self.settings.get_facility_type(facility_type_key or 0)
+            facility_type = self.config_data.get_facility_type(facility_type_key or 0)
             facility = Facility(
                 id=generate_id(),
                 installation_id=installation_id,
                 facility_type_key=facility_type_key,
                 facility_type_title=facility_type.title if facility_type else None,
-                year_constructed=self.sample_year_constructed(
-                    self.settings.simulation.maximum_facility_age
-                ),
+                year_constructed=self.sample_year_constructed(max_facility_age),
                 dependency_position=dependency_positions[idx],
             )
 
@@ -71,10 +71,6 @@ class FacilityGenerator(DataGeneratorBase):
         self._assign_resiliency_grades(all_facility)
         return all_facility, all_systems, all_work_orders
 
-    #! =========================================================
-    #! HELPERS
-    #! =========================================================
-
     def _generate_dependency_position_set(self, count: int) -> list[DependencyPosition]:
         """Generate a validated set of dependency positions for a given count."""
         positions: list[DependencyPosition] = []
@@ -85,9 +81,9 @@ class FacilityGenerator(DataGeneratorBase):
 
         for _ in range(count):
             vertical_position = (
-                self.settings.simulation.get_random_dependency_chain_vertical_position()
+                self.settings.get_random_dependency_chain_vertical_position()
             )
-            group_ids = self.settings.simulation.get_random_dependency_chain_group_IDS()
+            group_ids = self.settings.get_random_dependency_chain_group_ids()
             positions.append(
                 DependencyPosition(
                     vertical_position=vertical_position, group_ids=group_ids
@@ -137,7 +133,7 @@ class FacilityGenerator(DataGeneratorBase):
 
     def _assign_resiliency_grades(self, facilities: list[Facility]) -> None:
         """Assign resiliency grades based on dependency relationships."""
-        levels = self.settings.simulation.get_dependency_chain_vertical_positions()
+        levels = self.settings.get_dependency_chain_vertical_positions()
         facilities_by_level: dict[str, list[Facility]] = {level: [] for level in levels}
 
         for facility in facilities:
@@ -188,9 +184,8 @@ class FacilityGenerator(DataGeneratorBase):
         if not scores:
             return UFCGrade.G1
 
-        threshold = max(
-            0.0, min(1.0, self.settings.degradation.resiliency_grade_threshold / 100.0)
-        )
+        threshold_pct = self.settings.get_value("resiliency_grade_rating_threshold")
+        threshold = max(0.0, min(1.0, threshold_pct / 100.0))
         total = len(scores)
 
         if sum(1 for score in scores if score >= 4) / total >= threshold:

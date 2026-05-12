@@ -11,7 +11,7 @@ import pandas as pd
 from src.enums.entity_type import EntityType
 
 if TYPE_CHECKING:
-    from src.config.settings import MIDASSettings
+    from src.config.midas_config_data import MidasConfigData
     from src.models import Facility, Installation, System
 
 
@@ -123,11 +123,15 @@ class ConditionHistoryExportAdapter:
     """Convert runtime history into table-like time-series outputs."""
 
     def __init__(
-        self, history: ConditionHistoryStore, settings: MIDASSettings | None = None
+        self,
+        history: ConditionHistoryStore,
+        config_data: "MidasConfigData | None" = None,
     ) -> None:
-        """Initialize the export adapter."""
+        """Initialize the export adapter (reference data resolves from the singleton)."""
+        from src.config.midas_config_data import MidasConfigData
+
         self.history = history
-        self.settings = settings
+        self.config_data = config_data or MidasConfigData()
 
     def create_tables(
         self,
@@ -173,10 +177,8 @@ class ConditionHistoryExportAdapter:
             facility = facilities_by_id.get(snapshot.entity_id)
             if facility is None:
                 continue
-            facility_type = (
-                self.settings.get_facility_type(facility.facility_type_key or 0)
-                if self.settings
-                else None
+            facility_type = self.config_data.get_facility_type(
+                facility.facility_type_key or 0
             )
             rows.append(
                 {
@@ -203,11 +205,7 @@ class ConditionHistoryExportAdapter:
             system = systems_by_id.get(snapshot.entity_id)
             if system is None:
                 continue
-            system_type = (
-                self.settings.get_system_type(system.system_type_key or 0)
-                if self.settings
-                else None
-            )
+            system_type = self.config_data.get_system_type(system.system_type_key or 0)
             rows.append(
                 {
                     "entity_id": snapshot.entity_id,

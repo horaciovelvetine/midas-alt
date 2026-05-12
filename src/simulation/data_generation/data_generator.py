@@ -1,7 +1,5 @@
 """Public facade for simulation data generation."""
 
-from src.config.app_state import get_app_state
-from src.config.settings import MIDASSettings
 from src.models import DataStore
 
 from .install_generator import InstallGenerator
@@ -10,11 +8,10 @@ from .install_generator import InstallGenerator
 class DataGenerator:
     """Facade that coordinates installation-level data generation."""
 
-    def __init__(self, settings: MIDASSettings | None = None, seed: int | None = None):
-        """Initialize generation facade with optional settings and seed."""
-        self.settings = settings or get_app_state().settings
+    def __init__(self, seed: int | None = None) -> None:
+        """Initialize generation facade with an optional seed."""
         self.seed = seed
-        self._install_generator = InstallGenerator(settings=self.settings, seed=seed)
+        self._install_generator = InstallGenerator(seed=seed)
 
     def generate_installation(self) -> DataStore:
         """Generate a single installation hierarchy."""

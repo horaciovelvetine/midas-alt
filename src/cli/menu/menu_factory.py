@@ -3,6 +3,7 @@
 from rich.console import Console
 
 from src.cli.handlers.config_handlers import (
+    handle_edit_midas_settings,
     handle_reload_configuration,
     handle_save_configuration,
     handle_view_config_values,
@@ -44,6 +45,11 @@ def get_configuration_menu():
         "View Config Values",
         handle_view_config_values,
         description="View all current configuration values used by the MIDAS application",
+    )
+    builder.add_item(
+        "Edit MIDAS Settings",
+        handle_edit_midas_settings,
+        description="Pick any setting and tweak its value, range, or distribution parameters interactively",
     )
     builder.add_separator()
     builder.add_item(

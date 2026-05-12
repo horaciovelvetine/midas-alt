@@ -2,6 +2,8 @@
 
 import logging
 
+from src.cli.handlers.settings_editor import run_settings_editor
+from src.cli.handlers.settings_persistence import maybe_prompt_save
 from src.cli.utils import DisplayHelper, InputHelper
 from src.config import (
     MidasConfigData,
@@ -47,6 +49,12 @@ def handle_reload_configuration() -> None:
             InputHelper.wait_for_continue()
     else:
         DisplayHelper.print_warning("Configuration reload cancelled.")
+
+
+def handle_edit_midas_settings() -> None:
+    """Open the interactive editor for MIDAS settings; prompt to save on return."""
+    run_settings_editor()
+    maybe_prompt_save()
 
 
 def handle_save_configuration() -> None:

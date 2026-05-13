@@ -78,6 +78,12 @@ class ApplicationState:
                 f"State file load error at {resolved_state_path}: {exc}"
             )
 
+        try:
+            settings.sync_simulation_module_registry()
+        except Exception as exc:
+            logger.exception("Failed to sync simulation module registry")
+            load_result.add_warning(f"Simulation module registry sync error: {exc}")
+
         resolved_config_path = (
             config_path
             if config_path is not None
@@ -129,8 +135,13 @@ class ApplicationState:
         """Create application state without loading workbook or state file."""
         MidasSettings.reset()
         MidasConfigData.reset()
+        settings = MidasSettings()
+        try:
+            settings.sync_simulation_module_registry()
+        except Exception:
+            logger.exception("Failed to sync simulation module registry")
         return cls(
-            settings=MidasSettings(),
+            settings=settings,
             config_data=MidasConfigData(),
             load_result=LoadResult(
                 success=True,

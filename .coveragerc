@@ -1,0 +1,18 @@
+[run]
+branch = false
+source = .
+omit =
+    */main.py
+    */src/config/configure_logging.py
+    */src/config/display.py
+    main.py
+    src/config/configure_logging.py
+    src/config/display.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    if TYPE_CHECKING:
+    if __name__ == .__main__.:
+    \.\.\.

@@ -15,15 +15,10 @@ if TYPE_CHECKING:
     from src.simulation.runtime.session import SimulationSession
 
 _STATE_ORDER = ("excellent", "good", "fair", "poor", "critical", "failed")
-_STATE_RATE_MULTIPLIERS = {
-    "excellent": 0.9,
-    "good": 1.0,
-    "fair": 1.15,
-    "poor": 1.3,
-    "critical": 1.65,
-    "failed": 0.0,
-}
-_AGE_RATIO_RATE_POINTS = (
+
+# Fallback curve used when the configurable setting is missing or malformed.
+# Mirrors the original hard-coded breakpoints; treat as the documented baseline.
+_DEFAULT_AGE_RATIO_RATE_POINTS: tuple[tuple[float, float], ...] = (
     (0.0, 0.012),
     (0.25, 0.02),
     (0.5, 0.05),
@@ -32,6 +27,7 @@ _AGE_RATIO_RATE_POINTS = (
     (1.25, 0.32),
     (1.5, 0.55),
 )
+
 _EPSILON = 1e-9
 
 
@@ -44,15 +40,33 @@ class SystemDegradationModule(SimulationModuleBase):
         self._remaining_transition_exposure: dict[str, float] = {}
         self._tracked_states: dict[str, str] = {}
 
+    # ! ======================================================================================================>
+    # ! APPLY
+    # ! ======================================================================================================>
+
     def apply(self, session: SimulationSession) -> list[ModuleEvent]:
         """Advance passive system degradation for one simulation tick."""
         tick_years = _tick_size_to_years(session.clock.tick_size)
         if tick_years <= 0:
             return []
 
-        # pulls value from MIDASSettings
-        degraded_threshold = (
-            session.settings.degradation.condition_index_degraded_threshold
+        degraded_threshold = float(
+            session.settings.get_value("condition_index_degraded_threshold")
+        )
+        state_multipliers: dict[str, float] = session.settings.get_value(
+            "system_degradation_state_rate_multipliers"
+        )
+        random_annual_chance = float(
+            session.settings.get_value("random_system_degradation_chance")
+        )
+        random_ci_drop = float(
+            session.settings.get_value("random_system_degradation_ci_drop")
+        )
+        random_tick_chance = max(
+            0.0, min(1.0, (random_annual_chance / 100.0) * tick_years)
+        )
+        curve_points = _curve_points_from_setting(
+            session.settings.get_value("system_degradation_age_ratio_rate_curve")
         )
         events: list[ModuleEvent] = []
 
@@ -61,6 +75,16 @@ class SystemDegradationModule(SimulationModuleBase):
             if system.condition_index is None or system_type is None:
                 self._clear_tracking(system.id)
                 continue
+
+            random_event = self._maybe_apply_random_degradation(
+                system=system,
+                system_type=system_type,
+                tick_chance=random_tick_chance,
+                ci_drop=random_ci_drop,
+                degraded_threshold=degraded_threshold,
+            )
+            if random_event is not None:
+                events.append(random_event)
 
             current_state = _state_from_ci(system.condition_index, degraded_threshold)
             if current_state == "failed":
@@ -78,6 +102,7 @@ class SystemDegradationModule(SimulationModuleBase):
                 age_months=age_months,
                 life_expectancy_months=life_expectancy_months,
                 tick_years=tick_years,
+                curve_points=curve_points,
             )
             self._sync_tracking(system.id, current_state)
             events.extend(
@@ -88,10 +113,69 @@ class SystemDegradationModule(SimulationModuleBase):
                     age_ratio=age_ratio,
                     tick_years=tick_years,
                     degraded_threshold=degraded_threshold,
+                    state_multipliers=state_multipliers,
+                    curve_points=curve_points,
                 )
             )
 
         return events
+
+    # ! ======================================================================================================>
+    # ! RANDOM_DEGRADATION_EVENT
+    # ! ======================================================================================================>
+
+    def _maybe_apply_random_degradation(
+        self,
+        system: System,
+        system_type: SystemType,
+        tick_chance: float,
+        ci_drop: float,
+        degraded_threshold: float,
+    ) -> ModuleEvent | None:
+        """Roll an independent per-tick random-degradation event for one system.
+
+        The configured chance is treated as the probability over a 1-year tick and
+        scaled linearly to ``tick_chance`` for the current tick. When the roll
+        succeeds, ``ci_drop`` points are subtracted from the system's condition
+        index (clamped at 0); the exponential exposure tracker for the age-driven
+        loop is resampled if the resulting condition band changes.
+        """
+        if tick_chance <= 0.0 or ci_drop <= 0.0:
+            return None
+        if system.condition_index is None or system.condition_index <= 0:
+            return None
+        if self._rng.random() >= tick_chance:
+            return None
+
+        previous_ci = system.condition_index
+        previous_state = _state_from_ci(previous_ci, degraded_threshold)
+        new_ci = round(max(0.0, previous_ci - ci_drop), 2)
+        system.condition_index = new_ci
+        new_state = _state_from_ci(new_ci, degraded_threshold)
+
+        if new_state != previous_state:
+            if new_state == "failed":
+                self._clear_tracking(system.id)
+            else:
+                self._tracked_states[system.id] = new_state
+                self._remaining_transition_exposure[system.id] = (
+                    self._sample_transition_exposure()
+                )
+
+        return ModuleEvent(
+            code="system_random_degradation_event",
+            message=(
+                f"System {system.id} ({system_type.title}) hit by random degradation: "
+                f"CI {previous_ci:.2f} -> {new_ci:.2f} "
+                f"({previous_state.title()} -> {new_state.title()}, drop {ci_drop:.2f})."
+            ),
+            entity_id=system.id,
+            entity_type=EntityType.SYSTEM,
+        )
+
+    # ! ======================================================================================================>
+    # ! SYSTEM_DEGRADATION_LOOP
+    # ! ======================================================================================================>
 
     def _apply_system_degradation(
         self,
@@ -101,6 +185,8 @@ class SystemDegradationModule(SimulationModuleBase):
         age_ratio: float,
         tick_years: float,
         degraded_threshold: float,
+        state_multipliers: dict[str, float],
+        curve_points: tuple[tuple[float, float], ...] = _DEFAULT_AGE_RATIO_RATE_POINTS,
     ) -> list[ModuleEvent]:
         """Consume hazard exposure and emit events for any state drops."""
         remaining_years = tick_years
@@ -109,7 +195,10 @@ class SystemDegradationModule(SimulationModuleBase):
 
         while remaining_years > _EPSILON and state != "failed":
             annual_rate = _annual_transition_rate(
-                age_ratio=age_ratio, current_state=state
+                age_ratio=age_ratio,
+                current_state=state,
+                state_multipliers=state_multipliers,
+                curve_points=curve_points,
             )
 
             if annual_rate <= 0:
@@ -164,10 +253,10 @@ class SystemDegradationModule(SimulationModuleBase):
     def _resolve_system_type(
         self, session: SimulationSession, system: System
     ) -> SystemType | None:
-        """Resolve reference data for a system from session settings."""
+        """Resolve reference data for a system from the config-data singleton."""
         if system.system_type_key is None:
             return None
-        return session.settings.get_system_type(system.system_type_key)
+        return session.settings.config_data.get_system_type(system.system_type_key)
 
     def _sync_tracking(self, system_id: str, state: str) -> None:
         """Reset the exposure clock if another process changes the state band."""
@@ -220,43 +309,95 @@ def _tick_size_to_years(tick_size: TickSize) -> float:
 
 
 def _effective_age_ratio(
-    age_months: int, life_expectancy_months: int, tick_years: float
+    age_months: int,
+    life_expectancy_months: int,
+    tick_years: float,
+    curve_points: tuple[tuple[float, float], ...] = _DEFAULT_AGE_RATIO_RATE_POINTS,
 ) -> float:
-    """Estimate the average age ratio over the current tick window."""
+    """Estimate the average age ratio over the current tick window.
+
+    The result is clamped to the largest configured age-ratio breakpoint in
+    ``curve_points`` so callers always land inside the interpolation domain.
+    """
     tick_months = tick_years * 12.0
     effective_age_months = max(0.0, age_months - (tick_months / 2.0))
     if life_expectancy_months <= 0:
         return 0.0
     return max(
         0.0,
-        min(
-            _AGE_RATIO_RATE_POINTS[-1][0], effective_age_months / life_expectancy_months
-        ),
+        min(curve_points[-1][0], effective_age_months / life_expectancy_months),
     )
 
 
-def _annual_transition_rate(age_ratio: float, current_state: str) -> float:
-    """Return the annualized state-transition hazard for the current condition band."""
-    return _base_transition_rate(age_ratio) * _STATE_RATE_MULTIPLIERS[current_state]
+def _annual_transition_rate(
+    age_ratio: float,
+    current_state: str,
+    state_multipliers: dict[str, float],
+    curve_points: tuple[tuple[float, float], ...] = _DEFAULT_AGE_RATIO_RATE_POINTS,
+) -> float:
+    """Return the annualized state-transition hazard for the current condition band.
+
+    States missing from ``state_multipliers`` (or mapped to a non-positive value)
+    short-circuit to ``0.0`` so the caller's loop terminates cleanly. ``failed``
+    is intentionally not configurable and falls into this branch. ``curve_points``
+    supplies the (age_ratio, base_rate) breakpoints used by the underlying
+    interpolation; tests may rely on the ``_DEFAULT_AGE_RATIO_RATE_POINTS``
+    fallback.
+    """
+    multiplier = state_multipliers.get(current_state, 0.0)
+    if multiplier <= 0:
+        return 0.0
+    return _base_transition_rate(age_ratio, curve_points) * multiplier
 
 
-def _base_transition_rate(age_ratio: float) -> float:
+def _base_transition_rate(
+    age_ratio: float,
+    curve_points: tuple[tuple[float, float], ...] = _DEFAULT_AGE_RATIO_RATE_POINTS,
+) -> float:
     """Interpolate the passive deterioration rate from normalized age."""
     # Passive deterioration accelerates late in life; early-life defects belong in
     # separate fault or maintenance modules rather than this background CI drift.
-    clamped_ratio = max(
-        _AGE_RATIO_RATE_POINTS[0][0], min(_AGE_RATIO_RATE_POINTS[-1][0], age_ratio)
-    )
+    clamped_ratio = max(curve_points[0][0], min(curve_points[-1][0], age_ratio))
 
     for (left_ratio, left_rate), (right_ratio, right_rate) in zip(
-        _AGE_RATIO_RATE_POINTS, _AGE_RATIO_RATE_POINTS[1:], strict=False
+        curve_points, curve_points[1:], strict=False
     ):
         if clamped_ratio <= right_ratio:
             span = max(_EPSILON, right_ratio - left_ratio)
             pct = (clamped_ratio - left_ratio) / span
             return left_rate + ((right_rate - left_rate) * pct)
 
-    return _AGE_RATIO_RATE_POINTS[-1][1]
+    return curve_points[-1][1]
+
+
+def _curve_points_from_setting(
+    raw_value: object,
+) -> tuple[tuple[float, float], ...]:
+    """Convert the configured mapping into sorted ``(age_ratio, rate)`` points.
+
+    The setting is stored as ``MappingSettingState`` with stringified age-ratio
+    keys (e.g. ``"0.25"``) and float annual-rate values. Entries with non-numeric
+    keys are skipped silently. When the resulting curve has fewer than two valid
+    breakpoints (the minimum needed for interpolation) the documented default
+    curve is used so the module never produces nonsensical hazard rates.
+    """
+    if not isinstance(raw_value, dict):
+        return _DEFAULT_AGE_RATIO_RATE_POINTS
+
+    points: list[tuple[float, float]] = []
+    for key, value in raw_value.items():
+        try:
+            age_ratio = float(key)
+            rate = float(value)
+        except (TypeError, ValueError):
+            continue
+        points.append((age_ratio, max(0.0, rate)))
+
+    if len(points) < 2:
+        return _DEFAULT_AGE_RATIO_RATE_POINTS
+
+    points.sort(key=lambda item: item[0])
+    return tuple(points)
 
 
 def _next_state_name(current_state: str) -> str:

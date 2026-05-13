@@ -4,14 +4,17 @@ import logging
 
 from src.cli.handlers.settings_editor import run_settings_editor
 from src.cli.handlers.settings_persistence import maybe_prompt_save
-from src.cli.utils import DisplayHelper, InputHelper
+from src.cli.utils import DisplayHelper, InputHelper, NavigationHelper
 from src.config import (
     MidasConfigData,
     MidasSettings,
-    create_config_values_panel,
     create_facility_types_table,
     create_installation_locations_table,
     create_system_types_table,
+    create_work_order_text_summary_table,
+    create_work_order_texts_for_system_table,
+    format_work_order_text_detail,
+    iter_work_order_text_groups,
 )
 from src.config.app_state import ApplicationState, set_app_state
 
@@ -70,46 +73,128 @@ def handle_save_configuration() -> None:
     InputHelper.wait_for_continue()
 
 
-def handle_view_facility_types_summary() -> None:
+def handle_view_loaded_config_data() -> None:
+    """Open a sub-menu for browsing reference data loaded from the config workbook."""
+    from src.cli.menu.menu_builder import MenuBuilder
+
+    builder = MenuBuilder("Loaded Configuration Data")
+    builder.add_item(
+        "Facility Types",
+        _view_facility_types_summary,
+        description="List every facility type loaded from the 'Facilities' sheet",
+    )
+    builder.add_item(
+        "System Types",
+        _view_system_types_summary,
+        description="List every system type loaded from the 'Systems' sheet with its parent facility keys",
+    )
+    builder.add_item(
+        "Installation Locations",
+        _view_installation_locations_summary,
+        description="List every installation location loaded from the 'Installations' sheet",
+    )
+    builder.add_item(
+        "Work Order Templates",
+        _view_work_order_text_summary,
+        description="Browse work-order templates grouped by system title and drill into individual rows",
+    )
+    builder.build().run()
+
+
+def _view_facility_types_summary() -> None:
     """View facility types summary."""
     table = create_facility_types_table(MidasConfigData())
     DisplayHelper.print_table(table)
     InputHelper.wait_for_continue()
 
 
-def handle_view_system_types_summary() -> None:
+def _view_system_types_summary() -> None:
     """View system types summary."""
     table = create_system_types_table(MidasConfigData())
     DisplayHelper.print_table(table)
     InputHelper.wait_for_continue()
 
 
-def handle_view_installation_locations_summary() -> None:
+def _view_installation_locations_summary() -> None:
     """View installation locations summary."""
     table = create_installation_locations_table(MidasConfigData())
     DisplayHelper.print_table(table)
     InputHelper.wait_for_continue()
 
 
-def handle_view_config_values() -> None:
-    """View config values summary."""
-    from rich.console import Console
+def _view_work_order_text_summary() -> None:
+    """Interactively browse loaded work-order templates by system group."""
+    config_data = MidasConfigData()
+    while True:
+        DisplayHelper.clear_screen()
+        DisplayHelper.print_table(create_work_order_text_summary_table(config_data))
+        groups = iter_work_order_text_groups(config_data)
+        if not groups:
+            InputHelper.wait_for_continue()
+            return
 
-    console = Console()
+        choice = InputHelper.get_input_with_backspace(
+            f"Select a system (1-{len(groups)}) to view its templates, Enter / b / q to return",
+            allow_empty=True,
+        )
+        if (
+            choice is None
+            or choice == ""
+            or NavigationHelper.can_go_back(choice)
+            or NavigationHelper.should_quit_to_menu(choice)
+        ):
+            return
 
-    console.print("\n")
-    console.print(
-        "Config values are loaded on startup from output/midas_settings.json (if present)"
-    )
-    console.print(
-        "and reference data from docs/midas_config_data.xlsx; missing files fall back to defaults."
-    )
-    console.print(
-        "Use 'Save Configuration' to persist the current values for next startup."
-    )
-    console.print("\n")
+        try:
+            index = int(choice) - 1
+        except ValueError:
+            DisplayHelper.print_error("Invalid input. Please enter a number.")
+            InputHelper.wait_for_continue()
+            continue
+        if not 0 <= index < len(groups):
+            DisplayHelper.print_error(
+                f"Invalid selection. Please enter 1-{len(groups)}."
+            )
+            InputHelper.wait_for_continue()
+            continue
 
-    panel = create_config_values_panel(MidasSettings())
-    console.print(panel)
+        system_title, rows = groups[index]
+        _view_work_order_text_group(system_title, rows)
 
-    InputHelper.wait_for_continue()
+
+def _view_work_order_text_group(system_title: str, rows: list) -> None:
+    """Show templates for one system title and allow drill-down into a single row."""
+    while True:
+        DisplayHelper.clear_screen()
+        DisplayHelper.print_table(
+            create_work_order_texts_for_system_table(rows, system_title=system_title)
+        )
+
+        choice = InputHelper.get_input_with_backspace(
+            f"Select a template (1-{len(rows)}) for full text, Enter / b / q to return",
+            allow_empty=True,
+        )
+        if (
+            choice is None
+            or choice == ""
+            or NavigationHelper.can_go_back(choice)
+            or NavigationHelper.should_quit_to_menu(choice)
+        ):
+            return
+
+        try:
+            index = int(choice) - 1
+        except ValueError:
+            DisplayHelper.print_error("Invalid input. Please enter a number.")
+            InputHelper.wait_for_continue()
+            continue
+        if not 0 <= index < len(rows):
+            DisplayHelper.print_error(f"Invalid selection. Please enter 1-{len(rows)}.")
+            InputHelper.wait_for_continue()
+            continue
+
+        DisplayHelper.print_panel(
+            content=format_work_order_text_detail(rows[index]),
+            title=f"Work Order Template #{index + 1}: {system_title}",
+        )
+        InputHelper.wait_for_continue()

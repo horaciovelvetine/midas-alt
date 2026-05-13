@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from rich.console import Group
-from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 
+from src.models import WorkOrderText
 from src.models.distributions import (
     BathtubCurveDistribution,
     EventRateDistribution,
@@ -17,13 +15,6 @@ from src.models.distributions import (
 
 from .midas_config_data import MidasConfigData
 from .midas_settings import MidasSettings
-from .setting_state import (
-    DistributionSettingState,
-    FloatSettingState,
-    IntegerSettingState,
-    RangeSettingState,
-    StringSettingState,
-)
 
 
 def create_facility_types_table(config_data: MidasConfigData | None = None) -> Table:
@@ -128,6 +119,130 @@ def create_installation_locations_table(
     return table
 
 
+def iter_work_order_text_groups(
+    config_data: MidasConfigData | None = None,
+) -> list[tuple[str, list[WorkOrderText]]]:
+    """Return loaded work-order templates grouped by system title.
+
+    Excludes the pooled ``_fallback`` bucket used internally by sampling, and
+    sorts groups by the original system title from the workbook so they read
+    naturally to a user browsing the data.
+    """
+    from src.io.loaders.config_data.load_work_order_text_config_data import (
+        FALLBACK_KEY,
+    )
+
+    data = config_data or MidasConfigData()
+    groups: list[tuple[str, list[WorkOrderText]]] = []
+    for key, rows in data.work_order_text_cache.items():
+        if key == FALLBACK_KEY or not rows:
+            continue
+        display_title = rows[0].system_title or key
+        groups.append((display_title, list(rows)))
+    groups.sort(key=lambda pair: pair[0].lower())
+    return groups
+
+
+def create_work_order_text_summary_table(
+    config_data: MidasConfigData | None = None,
+) -> Table:
+    """Rich table summarizing loaded work-order template groups by system title."""
+    groups = iter_work_order_text_groups(config_data)
+    total_templates = sum(len(rows) for _, rows in groups)
+
+    table = Table(
+        title=(
+            f"Loaded Work Order Templates: {total_templates} total"
+            f" across {len(groups)} system group(s)"
+        ),
+        show_header=True,
+        header_style="bold cyan",
+        border_style="green",
+    )
+
+    if not groups:
+        table.add_column("Status", style="yellow")
+        table.add_row("No Work Order templates are currently loaded")
+        return table
+
+    table.add_column("#", style="cyan", justify="right", width=4)
+    table.add_column("System Title", style="white")
+    table.add_column("Templates", style="magenta", justify="right")
+    table.add_column("Trades", style="blue")
+
+    for index, (system_title, rows) in enumerate(groups, start=1):
+        trades = sorted({row.trade for row in rows if row.trade})
+        trades_text = ", ".join(trades) if trades else "[dim]None[/dim]"
+        table.add_row(str(index), system_title, str(len(rows)), trades_text)
+
+    return table
+
+
+def create_work_order_texts_for_system_table(
+    rows: list[WorkOrderText],
+    *,
+    system_title: str,
+) -> Table:
+    """Rich table of work-order templates for a single system title."""
+    table = Table(
+        title=f"Work Order Templates: {system_title} ({len(rows)} total)",
+        show_header=True,
+        header_style="bold cyan",
+        border_style="green",
+    )
+
+    if not rows:
+        table.add_column("Status", style="yellow")
+        table.add_row("No Work Order templates loaded for this system")
+        return table
+
+    table.add_column("#", style="cyan", justify="right", width=4)
+    table.add_column("Trade", style="green")
+    table.add_column("Work Category", style="yellow")
+    table.add_column("Priority", style="magenta", justify="center")
+    table.add_column("Description", style="white")
+
+    for index, row in enumerate(rows, start=1):
+        priority = "" if row.priority_code is None else str(row.priority_code)
+        description = _truncate(row.problem_description, max_length=70)
+        table.add_row(
+            str(index),
+            row.trade or "[dim]N/A[/dim]",
+            row.work_category or "[dim]N/A[/dim]",
+            priority or "[dim]N/A[/dim]",
+            description or "[dim]N/A[/dim]",
+        )
+
+    return table
+
+
+def format_work_order_text_detail(row: WorkOrderText) -> str:
+    """Multi-line panel content showing every field of one work-order template."""
+    priority = "N/A" if row.priority_code is None else str(row.priority_code)
+    lines = [
+        f"System Title: {row.system_title or 'N/A'}",
+        f"Trade: {row.trade or 'N/A'}",
+        f"Work Category: {row.work_category or 'N/A'}",
+        f"Priority Code: {priority}",
+        "",
+        f"Description: {row.problem_description or 'N/A'}",
+        "",
+        f"Requested Action: {row.requested_action or 'N/A'}",
+        "",
+        f"Actions Taken: {row.action_taken or 'N/A'}",
+    ]
+    return "\n".join(lines)
+
+
+def _truncate(value: str, *, max_length: int) -> str:
+    """Return ``value`` shortened to ``max_length`` characters with an ellipsis."""
+    if not value:
+        return ""
+    if len(value) <= max_length:
+        return value
+    return value[: max_length - 1].rstrip() + "..."
+
+
 def _format_facility_keys(facility_keys: tuple[int, ...]) -> str:
     """Comma-separated keys, truncated with a count suffix when long."""
     if not facility_keys:
@@ -138,54 +253,6 @@ def _format_facility_keys(facility_keys: tuple[int, ...]) -> str:
 
     shown = ", ".join(str(k) for k in facility_keys[:5])
     return f"{shown}... (+{len(facility_keys) - 5} more)"
-
-
-def create_config_values_panel(settings: MidasSettings | None = None) -> Panel:
-    """Panel grouping all configurable setting values from MidasSettings."""
-    cfg = settings or MidasSettings()
-
-    scalar_table = Table(show_header=False, box=None, padding=(0, 2))
-    scalar_table.add_column("Setting", style="cyan", width=55)
-    scalar_table.add_column("Value", style="white")
-
-    distribution_blocks: list[tuple[str, Table]] = []
-
-    for name, state in cfg.iter_states():
-        if isinstance(state, DistributionSettingState):
-            distribution_blocks.append(
-                (state.label or name, _create_count_distribution_table(state.value))
-            )
-            continue
-
-        if isinstance(state, RangeSettingState):
-            low, high = state.value
-            value_str = str(low) if low == high else f"{low}-{high}"
-        elif isinstance(state, FloatSettingState):
-            value_str = f"{state.value:g}"
-        elif isinstance(state, IntegerSettingState):
-            value_str = str(state.value)
-        elif isinstance(state, StringSettingState):
-            value_str = f'"{state.value}"'
-        else:
-            value_str = str(getattr(state, "value", ""))
-
-        scalar_table.add_row(state.label or name, value_str)
-
-    content_items: list = [
-        Text("MIDAS SETTINGS", style="bold cyan"),
-        scalar_table,
-    ]
-    if distribution_blocks:
-        content_items.append(Text("\nDATA GENERATION DISTRIBUTIONS", style="bold cyan"))
-        for label, table in distribution_blocks:
-            content_items.append(Text(f"\n{label}:", style="bold yellow"))
-            content_items.append(table)
-
-    return Panel(
-        Group(*content_items),
-        title="MIDAS Configuration Values Summary",
-        border_style="green",
-    )
 
 
 def _create_parameter_table(rows: list[tuple[str, str]]) -> Table:

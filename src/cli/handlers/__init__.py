@@ -4,10 +4,7 @@ from .config_handlers import (
     handle_edit_midas_settings,
     handle_reload_configuration,
     handle_save_configuration,
-    handle_view_config_values,
-    handle_view_facility_types_summary,
-    handle_view_installation_locations_summary,
-    handle_view_system_types_summary,
+    handle_view_loaded_config_data,
 )
 from .simulate_handlers import (
     handle_generate_data,
@@ -22,10 +19,7 @@ __all__ = [
     "handle_edit_midas_settings",
     "handle_reload_configuration",
     "handle_save_configuration",
-    "handle_view_config_values",
-    "handle_view_facility_types_summary",
-    "handle_view_installation_locations_summary",
-    "handle_view_system_types_summary",
+    "handle_view_loaded_config_data",
     # Simulate handlers
     "handle_generate_data",
     "handle_quick_generate",

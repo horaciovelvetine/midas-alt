@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from rich.console import Console
+from rich.console import Console, RenderableType
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -20,9 +20,11 @@ from src.cli.utils import DisplayHelper, InputHelper
 from src.config import MidasSettings
 from src.config.display import _create_count_distribution_table
 from src.config.setting_state import (
+    BooleanMappingSettingState,
     DistributionSettingState,
     FloatSettingState,
     IntegerSettingState,
+    MappingSettingState,
     RangeSettingState,
     SettingState,
     StringSettingState,
@@ -46,6 +48,10 @@ _SECTION_BY_NAME: dict[str, str] = {
     "condition_index_degraded_threshold": "Degradation",
     "resiliency_grade_rating_threshold": "Degradation",
     "initial_condition_index_default": "Degradation",
+    "system_degradation_state_rate_multipliers": "Degradation",
+    "random_system_degradation_chance": "Degradation",
+    "random_system_degradation_ci_drop": "Degradation",
+    "system_degradation_age_ratio_rate_curve": "Degradation",
     "facilities_per_installation": "Data Generation",
     "dependency_chain_group_range": "Data Generation",
     "maximum_vertical_dependency_depth": "Data Generation",
@@ -58,8 +64,7 @@ _SECTION_BY_NAME: dict[str, str] = {
     "generated_work_order_status_distribution": "Data Generation Distributions",
     "generated_work_order_priority_distribution": "Data Generation Distributions",
     "generated_work_order_requesting_organization_distribution": "Data Generation Distributions",
-    "random_facility_degradation_chance": "Simulation",
-    "random_system_degradation_chance": "Simulation",
+    "enabled_simulation_modules": "Simulation",
     "excel_sheet_main": "Output",
     "excel_sheet_metadata": "Output",
     "excel_sheet_work_orders": "Output",
@@ -155,6 +160,10 @@ def edit_setting(name: str, state: SettingState) -> bool:
         return _edit_range(name, state)
     if isinstance(state, StringSettingState):
         return _edit_string(name, state)
+    if isinstance(state, BooleanMappingSettingState):
+        return _edit_boolean_mapping(name, state)
+    if isinstance(state, MappingSettingState):
+        return _edit_mapping(name, state)
     if isinstance(state, DistributionSettingState):
         return _edit_distribution(name, state)
     DisplayHelper.print_warning(
@@ -189,18 +198,20 @@ def _print_settings_index(settings: MidasSettings, ordered_names: list[str]) -> 
         show_header=True,
         header_style="bold cyan",
         border_style="green",
+        show_lines=True,
     )
     table.add_column("#", style="bold yellow", justify="right", width=4)
-    table.add_column("Setting", style="cyan")
-    table.add_column("Type", style="magenta")
-    table.add_column("Current Value", style="white")
+    table.add_column("Setting", style="cyan", no_wrap=True)
+    table.add_column("Type", style="magenta", no_wrap=True)
+    table.add_column("Current Value", style="white", overflow="fold")
+    table.add_column("Description", style="dim white", overflow="fold", ratio=2)
 
     last_section: str | None = None
     for index, name in enumerate(ordered_names, start=1):
         section = _SECTION_BY_NAME.get(name, "Other")
         if section != last_section:
             table.add_section()
-            table.add_row("", f"[bold]{section}[/bold]", "", "")
+            table.add_row("", f"[bold]{section}[/bold]", "", "", "")
             last_section = section
         state = settings.get_state(name)
         table.add_row(
@@ -208,6 +219,7 @@ def _print_settings_index(settings: MidasSettings, ordered_names: list[str]) -> 
             state.label or name,
             _setting_kind_label(state),
             _format_setting_value(state),
+            _format_setting_description(state),
         )
 
     dirty_marker = (
@@ -231,6 +243,10 @@ def _setting_kind_label(state: SettingState) -> str:
         return "range"
     if isinstance(state, StringSettingState):
         return "choice" if state.choices else "string"
+    if isinstance(state, BooleanMappingSettingState):
+        return "toggle map"
+    if isinstance(state, MappingSettingState):
+        return "mapping"
     if isinstance(state, DistributionSettingState):
         dist = state.value
         return (
@@ -241,7 +257,20 @@ def _setting_kind_label(state: SettingState) -> str:
     return type(state).__name__
 
 
-def _format_setting_value(state: SettingState) -> str:
+def _format_setting_description(state: SettingState) -> str:
+    """Return a single-paragraph description suitable for the picker table."""
+    description = (state.description or "").strip()
+    if not description:
+        return "[italic dim]No description.[/italic dim]"
+    return " ".join(description.split())
+
+
+def _format_setting_value(state: SettingState) -> RenderableType:
+    """Render a setting's current value for the picker table.
+
+    Distributions and mappings render as nested Rich tables so callers can see
+    the full configuration without opening the editor.
+    """
     if isinstance(state, RangeSettingState):
         low, high = state.value
         return f"{low}-{high}"
@@ -251,12 +280,56 @@ def _format_setting_value(state: SettingState) -> str:
         return str(state.value)
     if isinstance(state, StringSettingState):
         return f'"{state.value}"'
+    if isinstance(state, BooleanMappingSettingState):
+        if not state.value:
+            return "(empty)"
+        return _create_boolean_mapping_value_table(state)
+    if isinstance(state, MappingSettingState):
+        if not state.value:
+            return "(empty)"
+        return _create_mapping_value_table(state)
     if isinstance(state, DistributionSettingState):
-        dist = state.value
-        if isinstance(dist, WeightedProbabilityDistribution):
-            return f"{len(dist.segments)} segment(s)"
-        return type(dist).__name__ if dist is not None else "(unset)"
+        if state.value is None:
+            return "(unset)"
+        return _create_count_distribution_table(state.value)
     return str(getattr(state, "value", ""))
+
+
+def _create_mapping_value_table(state: MappingSettingState) -> Table:
+    """Compact two-column table for a mapping setting's current entries."""
+    table = Table(
+        show_header=True,
+        header_style="bold yellow",
+        box=None,
+        padding=(0, 1),
+    )
+    table.add_column(state.key_label or "Key", style="cyan")
+    table.add_column(state.value_label or "Value", style="white", justify="right")
+    for key, value in state.value.items():
+        table.add_row(str(key), f"{value:g}")
+    return table
+
+
+def _create_boolean_mapping_value_table(state: BooleanMappingSettingState) -> Table:
+    """Compact two-column table summarizing a boolean-mapping setting."""
+    table = Table(
+        show_header=True,
+        header_style="bold yellow",
+        box=None,
+        padding=(0, 1),
+    )
+    table.add_column(state.key_label or "Key", style="cyan")
+    table.add_column(state.value_label or "Enabled", style="white", justify="right")
+    ordered_keys = (
+        list(state.keys) if state.keys is not None else list(state.value.keys())
+    )
+    for key in ordered_keys:
+        enabled = bool(state.value.get(key, False))
+        label = state.display_label_for(key)
+        status_style = "green" if enabled else "dim red"
+        status_text = "on" if enabled else "off"
+        table.add_row(label, f"[{status_style}]{status_text}[/{status_style}]")
+    return table
 
 
 # ! ==========================================================================================>
@@ -378,6 +451,168 @@ def _edit_string(name: str, state: StringSettingState) -> bool:
         return False
     MidasSettings().set_value(name, new_value)
     return True
+
+
+# ! ==========================================================================================>
+# ! MAPPING EDITOR
+# ! ==========================================================================================>
+
+
+def _edit_mapping(name: str, state: MappingSettingState) -> bool:
+    """Iterate the mapping's keys and prompt for a new float per key.
+
+    Blank input keeps the current value. The mapping is only persisted when at
+    least one entry actually changes.
+    """
+    DisplayHelper.print_info(
+        f"{state.label or name}\n{state.description}\n"
+        f"{_bounds_hint(state.min, state.max).strip() or 'No per-value bounds.'}",
+        title="Edit Mapping",
+    )
+    _print_mapping_entries(state)
+
+    ordered_keys = (
+        list(state.keys) if state.keys is not None else list(state.value.keys())
+    )
+    if not ordered_keys:
+        DisplayHelper.print_warning(
+            "This mapping has no editable entries.", title="Edit Mapping"
+        )
+        InputHelper.wait_for_continue()
+        return False
+
+    new_values: dict[str, float] = {}
+    for key in ordered_keys:
+        current = float(state.value.get(key, 0.0))
+        new_value = _prompt_float(
+            f"{state.value_label} for {key} [current {current:g}] (blank to keep)",
+            default=current,
+            minimum=state.min,
+            maximum=state.max,
+        )
+        new_values[key] = current if new_value is None else new_value
+
+    if all(new_values[key] == state.value.get(key) for key in ordered_keys):
+        return False
+
+    try:
+        MidasSettings().set_value(name, new_values)
+    except (TypeError, ValueError) as exc:
+        DisplayHelper.print_error(f"Invalid mapping: {exc}", title="Edit Mapping")
+        return False
+    return True
+
+
+def _edit_boolean_mapping(name: str, state: BooleanMappingSettingState) -> bool:
+    """Toggle individual entries in a boolean-mapping setting.
+
+    The editor lists each entry with its current ``on``/``off`` status and
+    offers a sub-loop: enter a number to toggle that entry, ``a`` to enable
+    all, ``n`` to disable all, ``d`` to finish. The mapping is only persisted
+    when at least one entry actually changes.
+    """
+    DisplayHelper.print_info(
+        f"{state.label or name}\n{state.description}",
+        title="Edit Toggle Map",
+    )
+
+    ordered_keys = (
+        list(state.keys) if state.keys is not None else list(state.value.keys())
+    )
+    if not ordered_keys:
+        DisplayHelper.print_warning(
+            "This toggle map has no editable entries.",
+            title="Edit Toggle Map",
+        )
+        InputHelper.wait_for_continue()
+        return False
+
+    working: dict[str, bool] = {
+        key: bool(state.value.get(key, False)) for key in ordered_keys
+    }
+    initial = dict(working)
+
+    while True:
+        _print_boolean_mapping_entries(state, working, ordered_keys)
+        numeric_choices = [str(index) for index in range(1, len(ordered_keys) + 1)]
+        choices = numeric_choices + ["a", "n", "d"]
+        action = InputHelper.ask_choice(
+            "Toggle # / (a)ll on / (n)one / (d)one",
+            choices=choices,
+            default="d",
+            allow_back=True,
+        )
+        if action is None or action is InputHelper.QUIT_TO_MENU or action == "d":
+            break
+        if action == "a":
+            working = {key: True for key in ordered_keys}
+            continue
+        if action == "n":
+            working = {key: False for key in ordered_keys}
+            continue
+        try:
+            index = int(action)
+        except ValueError:
+            continue
+        if not (1 <= index <= len(ordered_keys)):
+            continue
+        target_key = ordered_keys[index - 1]
+        working[target_key] = not working[target_key]
+
+    if working == initial:
+        return False
+
+    try:
+        MidasSettings().set_value(name, working)
+    except (TypeError, ValueError) as exc:
+        DisplayHelper.print_error(f"Invalid toggle map: {exc}", title="Edit Toggle Map")
+        return False
+    return True
+
+
+def _print_boolean_mapping_entries(
+    state: BooleanMappingSettingState,
+    working: dict[str, bool],
+    ordered_keys: list[str],
+) -> None:
+    """Render the current toggle state as a numbered table."""
+    table = Table(
+        show_header=True,
+        header_style="bold cyan",
+        title="Current Entries",
+    )
+    table.add_column("#", style="bold yellow", justify="right", width=4)
+    table.add_column(state.key_label or "Key", style="cyan")
+    table.add_column(state.value_label or "Enabled", style="white", justify="right")
+    for index, key in enumerate(ordered_keys, start=1):
+        enabled = bool(working.get(key, False))
+        status_style = "green" if enabled else "dim red"
+        status_text = "on" if enabled else "off"
+        table.add_row(
+            str(index),
+            state.display_label_for(key),
+            f"[{status_style}]{status_text}[/{status_style}]",
+        )
+    console.print(table)
+    console.print()
+
+
+def _print_mapping_entries(state: MappingSettingState) -> None:
+    """Render the mapping's current ``(key, value)`` pairs in a Rich table."""
+    table = Table(
+        show_header=True,
+        header_style="bold cyan",
+        title="Current Entries",
+    )
+    table.add_column(state.key_label or "Key", style="cyan")
+    table.add_column(state.value_label or "Value", style="white", justify="right")
+    if not state.value:
+        table.add_row("-", "[dim]No entries configured[/dim]")
+    else:
+        for key, value in state.value.items():
+            table.add_row(str(key), f"{value:g}")
+    console.print(table)
+    console.print()
 
 
 # ! ==========================================================================================>

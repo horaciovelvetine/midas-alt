@@ -1,9 +1,8 @@
 """Display utilities for CLI output formatting."""
 
-from rich.console import Console, Group
+from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 
 console = Console()
 
@@ -23,34 +22,6 @@ class DisplayHelper:
         """
         console.print("\n")
         console.print(Panel(content, title=title, border_style=border_style))
-        console.print("\n")
-
-    @staticmethod
-    def print_config_view(content: str | list[str], title: str, config_summary) -> None:
-        """Print config view with combined content and config summary.
-
-        Args:
-            content: Content to display (string or list of strings).
-            title: Panel title.
-            config_summary: Config summary panel from create_config_values_panel().
-
-        """
-        # Convert list to string if needed
-        if isinstance(content, list):
-            content = "\n".join(content)
-
-        # Extract the renderable content from the config panel
-        config_content = getattr(config_summary, "_renderable", None) or getattr(config_summary, "renderable", config_summary)
-
-        # Create a Group with the text content and config content
-        combined_content = Group(
-            Text(content),
-            Text(""),  # Empty line separator
-            config_content,
-        )
-
-        console.print("\n")
-        console.print(Panel(combined_content, title=title, border_style="green"))
         console.print("\n")
 
     @staticmethod

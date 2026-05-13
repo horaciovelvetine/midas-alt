@@ -74,9 +74,9 @@ def build_settings_snapshot_panel(session: SimulationSession | None = None) -> P
     """Render a compact snapshot of simulation-relevant settings beside the inspect panel.
 
     Shows the scalar tunables that most influence ongoing simulation behavior
-    (degradation thresholds, random degradation chances, generation defaults,
-    and age maxima) and tags an "[unsaved]" marker when ``MidasSettings`` has
-    edits that have not yet been persisted.
+    (degradation thresholds, random degradation chance and CI drop, generation
+    defaults, and age maxima) and tags an "[unsaved]" marker when
+    ``MidasSettings`` has edits that have not yet been persisted.
     """
     del session
     settings = MidasSettings()
@@ -88,8 +88,8 @@ def build_settings_snapshot_panel(session: SimulationSession | None = None) -> P
     snapshot_keys = (
         ("Degraded Threshold (CI)", "condition_index_degraded_threshold"),
         ("Initial CI Default", "initial_condition_index_default"),
-        ("Random Facility Degrade %", "random_facility_degradation_chance"),
-        ("Random System Degrade %", "random_system_degradation_chance"),
+        ("Random System Degrade %/yr", "random_system_degradation_chance"),
+        ("Random System Degrade CI Drop", "random_system_degradation_ci_drop"),
         ("Max Facility Age", "maximum_facility_age"),
         ("Max System Age", "maximum_system_age"),
     )

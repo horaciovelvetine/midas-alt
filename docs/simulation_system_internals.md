@@ -17,8 +17,9 @@ The runtime now sits on top of four distinct package areas:
 
 ```mermaid
 flowchart TD
-    A["ConfigWorkbookLoader"]
-    B["MIDASSettings"]
+    A["MidasConfigDataLoader<br/>docs/midas_config_data.xlsx"]
+    B["MidasSettings singleton<br/>output/midas_settings.json"]
+    R["MidasConfigData singleton"]
     C["DataGenerator"]
     D["SimulationDataLoader"]
     E["DataStore -> installations, facilities, systems, work_orders"]
@@ -38,9 +39,11 @@ flowchart TD
         T1 --> T2 --> T3 --> T4 --> T5 --> T6
     end
 
-    A --> B
-    B --> C
-    B --> D
+    A --> R
+    B -. SettingState .- C
+    R --> C
+    B -. SettingState .- D
+    R --> D
     C --> E
     D --> E
     E --> F --> G --> H
@@ -55,17 +58,20 @@ One installation per session; **`SimulationSession`** owns mutable runtime state
 
 ### Configuration and reference data
 
-`src/config/midas_config_values.xlsx` drives both generation behavior and several runtime rules.
+Configuration is split across two singletons:
+
+- `MidasSettings` (`src/config/midas_settings.py`) holds every configurable runtime value as a typed `SettingState`. Defaults are documented in code; persisted overrides come from `output/midas_settings.json` on startup. Read values with `MidasSettings().get_value("<name>")`.
+- `MidasConfigData` (`src/config/midas_config_data.py`) holds reference data (facility types, system types, installation locations, work-order text cache) loaded from `docs/midas_config_data.xlsx` by `MidasConfigDataLoader` in `src/io/loaders/midas_config_data_loader.py`.
 
 Important runtime-relevant settings include:
 
-- degradation thresholds
-- facility and system age limits
-- dependency-chain settings
-- work-order distributions
-- facility and system reference data
+- degradation thresholds (`condition_index_degraded_threshold`, `initial_condition_index_default`)
+- facility and system age limits (`maximum_facility_age`, `maximum_system_age`)
+- dependency-chain settings (`facilities_per_installation`, `dependency_chain_group_range`, `maximum_vertical_dependency_depth`)
+- generation distributions (`generated_*_distribution`)
+- output naming (`excel_sheet_main`, `excel_sheet_metadata`, `excel_sheet_work_orders`, `metadata_file_suffix`, `csv_table_separator`)
 
-`ConfigWorkbookLoader` in `src/io/loaders/config_workbook_loader.py` builds a `MIDASSettings` object. The resulting settings are then passed into generators, loaders, exporters, and the runtime session. The reference-data types (`FacilityType`, `SystemType`, `InstallationLocation`, `WorkOrderText`) now live under `src/models/domain/`, and distribution implementations live under `src/models/distributions/`.
+Generators, loaders, exporters, and the runtime session all read these singletons directly. The reference-data types (`FacilityType`, `SystemType`, `InstallationLocation`, `WorkOrderText`) live under `src/models/domain/`, and distribution implementations live under `src/models/distributions/`.
 
 ### Generated or loaded data
 
@@ -123,7 +129,7 @@ Modules are run in list order during `SimulationSession.step()`.
 
 ### Built-in system degradation module
 
-`src/simulation/modules/system_degradation.py` provides `SystemDegradationModule`, and the runtime CLI registers it by default when launching a live simulation session.
+`src/simulation/modules/system_degradation.py` provides `SystemDegradationModule`, and it is the only module enabled by default in the runtime-module registry.
 
 The module is intentionally narrow in scope:
 
@@ -133,7 +139,19 @@ The module is intentionally narrow in scope:
 - it scales deterioration to the active tick size
 - it emits non-pausing events when a system drops into a worse condition band
 
-The current model is passive only (no maintenance recovery, backlog penalties, or shock failures).
+The current model is passive only (no maintenance recovery, backlog penalties, or shock failures); see [`system_degradation_module.md`](system_degradation_module.md) for the full age-band hazard model and the random-event layer.
+
+### Selecting which modules run
+
+Which modules participate in a session is driven by `MidasSettings`, not by hardcoded CLI lists. The flow is:
+
+1. `src/simulation/modules/registry.py` discovers every concrete `SimulationModuleBase` subclass declared under `src/simulation/modules/` (excluding `base.py` and `registry.py`). Each class is registered as a `ModuleSpec(key, label, factory, default_enabled)`; keys are derived from the class name by stripping the `Module` suffix and converting to snake_case (e.g. `SystemDegradationModule` -> `system_degradation`).
+2. `MidasSettings` exposes an `enabled_simulation_modules` setting backed by a new `BooleanMappingSettingState` (a `dict[str, bool]` with display labels and a fixed key set).
+3. `ApplicationState.initialize()` calls `MidasSettings.sync_simulation_module_registry()` after loading the JSON state file. Newly discovered modules are added with their `default_enabled` flag, and unknown keys (e.g. modules that were renamed or deleted) are pruned. User overrides for keys that still exist are preserved.
+4. `MidasSettings.build_enabled_simulation_modules()` instantiates one module per enabled spec via `spec.factory()` and returns the list. `src/cli/handlers/simulate_handlers.py` passes that list to `SimulationSession.from_data_store(modules=...)`; the handler imports no module classes directly.
+5. The setting is editable through the standard settings editor (a toggle map UI lists each module with on/off, plus quick `a` enable-all and `n` disable-all actions). Toggled state persists to `output/midas_settings.json` via the existing `save_state` flow.
+
+`WorkOrderProgressionModule` lives in the registry but defaults to disabled; toggle it on in the settings editor to include it in subsequent runs. See [`work_order_progression_module.md`](work_order_progression_module.md) for its lifecycle schedule and repair behavior.
 
 ### Pause policies
 
@@ -370,21 +388,14 @@ If you are new to this part of the codebase, read these files in this order:
 
 1. `src/simulation/runtime/session.py`
 2. `src/simulation/modules/base.py`
-3. `src/simulation/modules/system_degradation.py`
-4. `src/simulation/runtime/clock.py`
-5. `src/simulation/runtime/history.py`
-6. `src/cli/simulation_shell.py`
-7. `tests/integration/test_simulation_runtime_integration.py`
-8. `tests/unit/test_simulation_shell_panels.py` (panel strings and mission-alert thresholds without a Live terminal loop)
-9. `tests/unit/test_cli_interrupts.py` (menu and wizard behavior on Ctrl-C / EOF)
+3. `src/simulation/modules/registry.py`
+4. `src/simulation/modules/system_degradation.py`
+5. `src/simulation/modules/work_order_progression.py`
+6. `src/simulation/runtime/clock.py`
+7. `src/simulation/runtime/history.py`
+8. `src/cli/simulation_shell.py`
+9. `tests/integration/test_simulation_runtime_integration.py`
+10. `tests/unit/test_simulation_shell_panels.py` (panel strings and mission-alert thresholds without a Live terminal loop)
+11. `tests/unit/test_cli_interrupts.py` (menu and wizard behavior on Ctrl-C / EOF)
 
 The runtime integration test is especially useful because it includes both the minimal `ForceInoperableModule` example and seeded coverage for `SystemDegradationModule`, showing how a module can mutate a system and let the rest of the runtime react automatically.
-
-## Sensible next features
-
-Stay in **modules** / **pause policies** / **session**, not the shell:
-
-1. Tune or externalize **`SystemDegradationModule`**
-2. Work-order progression rules
-3. Repair effects on CI
-4. Richer mission-impact logic

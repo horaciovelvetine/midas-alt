@@ -15,9 +15,11 @@ from typing import TYPE_CHECKING, Any, Iterable
 
 from src.config._singleton import SingletonMeta
 from src.config.setting_state import (
+    BooleanMappingSettingState,
     DistributionSettingState,
     FloatSettingState,
     IntegerSettingState,
+    MappingSettingState,
     RangeSettingState,
     SettingState,
     StringSettingState,
@@ -30,6 +32,7 @@ from src.models import (
 
 if TYPE_CHECKING:
     from src.config.midas_config_data import MidasConfigData
+    from src.simulation.modules.base import SimulationModuleBase
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +104,83 @@ class MidasSettings(metaclass=SingletonMeta):
             value=99.99,
             min=0.0,
             max=100.0,
+        )
+        self._states["system_degradation_state_rate_multipliers"] = MappingSettingState(
+            label="System Degradation Hazard Multipliers by Condition State",
+            description=(
+                "Per-condition-state multipliers applied to the base age-driven degradation "
+                "hazard rate in the System Degradation simulation module. Higher values make "
+                "Systems in that condition band degrade faster (1.0 = baseline). The 'failed' "
+                "state is excluded because failed Systems are no longer degraded."
+            ),
+            value={
+                "excellent": 0.9,
+                "good": 1.0,
+                "fair": 1.15,
+                "poor": 1.3,
+                "critical": 1.65,
+            },
+            keys=("excellent", "good", "fair", "poor", "critical"),
+            min=0.0,
+            max=10.0,
+            key_label="Condition State",
+            value_label="Hazard Multiplier",
+        )
+        self._states["random_system_degradation_chance"] = FloatSettingState(
+            label="System Random Degradation Annual Chance",
+            description=(
+                "Percentage chance per year that an individual System suffers an independent "
+                "random degradation event in addition to the age-driven hazard. The System "
+                "Degradation simulation module scales this base rate linearly by tick length "
+                "(1 year = full chance, 1 month tick gets ~1/12 of the chance, 1 day tick gets "
+                "~1/365 of the chance) and caps the per-tick probability at 100%."
+            ),
+            value=35.0,
+            min=0.0,
+            max=100.0,
+        )
+        self._states["random_system_degradation_ci_drop"] = FloatSettingState(
+            label="System Random Degradation CI Drop",
+            description=(
+                "Condition-index points subtracted from a System's condition index when a "
+                "random degradation event fires in the System Degradation simulation module. "
+                "Applied as a single drop independent of the age-driven hazard's per-band "
+                "transition logic; the resulting CI is clamped at 0."
+            ),
+            value=15.0,
+            min=0.0,
+            max=100.0,
+        )
+        self._states["system_degradation_age_ratio_rate_curve"] = MappingSettingState(
+            label="System Degradation Age Ratio Rate Curve",
+            description=(
+                "Piecewise-linear curve of base annual condition-state transition rates "
+                "indexed by normalized System age (current age / life expectancy). The "
+                "System Degradation simulation module reads this setting once per tick, "
+                "interpolates between the configured breakpoints to compute a base hazard "
+                "rate for the System's current age, then multiplies it by the per-band "
+                "value from 'system_degradation_state_rate_multipliers' to get the annual "
+                "transition rate driving the exponential waiting-time loop. Keys are the "
+                "normalized age ratios (0.00 = brand new, 1.00 = at life expectancy, "
+                ">1.00 = past life expectancy) and values are the corresponding base "
+                "annual rates (events/year). The curve is clamped at the smallest and "
+                "largest configured age ratios; raise values to make older Systems "
+                "degrade faster, lower them to slow the late-life acceleration."
+            ),
+            value={
+                "0.00": 0.012,
+                "0.25": 0.02,
+                "0.50": 0.05,
+                "0.75": 0.09,
+                "1.00": 0.18,
+                "1.25": 0.32,
+                "1.50": 0.55,
+            },
+            keys=("0.00", "0.25", "0.50", "0.75", "1.00", "1.25", "1.50"),
+            min=0.0,
+            max=10.0,
+            key_label="Age Ratio",
+            value_label="Base Annual Rate",
         )
 
         # --- Data Generation Settings ---
@@ -267,27 +347,19 @@ class MidasSettings(metaclass=SingletonMeta):
         )
 
         # --- Simulation Settings ---
-        self._states["random_facility_degradation_chance"] = IntegerSettingState(
-            label="Facility Randomly Degrades Chance",
+        self._states["enabled_simulation_modules"] = BooleanMappingSettingState(
+            label="Enabled Simulation Modules",
             description=(
-                "Random chance that a given Facility degrades during a tick of the simulation "
-                "(percentage, 0-100)."
+                "Selects which simulation modules run during a live simulation tick. "
+                "Entries are populated from the modules discovered under "
+                "src/simulation/modules/ during ApplicationState startup."
             ),
-            value=35,
-            min=0,
-            max=100,
+            value={},
+            keys=None,
+            labels={},
+            key_label="Module",
+            value_label="Enabled",
         )
-        self._states["random_system_degradation_chance"] = IntegerSettingState(
-            label="System Randomly Degrades Chance",
-            description=(
-                "Random chance that a given System degrades during a tick of the simulation "
-                "(percentage, 0-100)."
-            ),
-            value=35,
-            min=0,
-            max=100,
-        )
-
         # --- Output Settings ---
         self._states["excel_sheet_main"] = StringSettingState(
             label="Excel Main Sheet Name",
@@ -374,6 +446,50 @@ class MidasSettings(metaclass=SingletonMeta):
                     f"String setting {name!r} must be one of {list(state.choices)} (got {text!r})"
                 )
             state.value = text
+        elif isinstance(state, BooleanMappingSettingState):
+            if not isinstance(value, dict):
+                raise ValueError(
+                    f"Boolean mapping setting {name!r} requires a dict "
+                    f"(got {type(value).__name__})"
+                )
+            if state.keys is not None:
+                expected = set(state.keys)
+                provided = set(value.keys())
+                if provided != expected:
+                    missing = sorted(expected - provided)
+                    extra = sorted(provided - expected)
+                    raise ValueError(
+                        f"Boolean mapping setting {name!r} requires keys "
+                        f"{sorted(expected)} (missing={missing}, unexpected={extra})"
+                    )
+                ordered_keys = state.keys
+            else:
+                ordered_keys = tuple(str(key) for key in value.keys())
+            state.value = {key: bool(value[key]) for key in ordered_keys}
+        elif isinstance(state, MappingSettingState):
+            if not isinstance(value, dict):
+                raise ValueError(
+                    f"Mapping setting {name!r} requires a dict (got {type(value).__name__})"
+                )
+            if state.keys is not None:
+                expected = set(state.keys)
+                provided = set(value.keys())
+                if provided != expected:
+                    missing = sorted(expected - provided)
+                    extra = sorted(provided - expected)
+                    raise ValueError(
+                        f"Mapping setting {name!r} requires keys {sorted(expected)} "
+                        f"(missing={missing}, unexpected={extra})"
+                    )
+                ordered_keys: tuple[str, ...] = state.keys
+            else:
+                ordered_keys = tuple(str(key) for key in value.keys())
+            coerced_values: dict[str, float] = {}
+            for key in ordered_keys:
+                coerced = float(value[key])
+                _check_bounds(f"{name}[{key}]", coerced, state.min, state.max)
+                coerced_values[key] = coerced
+            state.value = coerced_values
         elif isinstance(state, DistributionSettingState):
             # ``DistributionBase`` is a non-runtime Protocol, so duck-type the contract
             # callers actually rely on (``sample`` plus ``to_dict`` for round-tripping).
@@ -457,6 +573,67 @@ class MidasSettings(metaclass=SingletonMeta):
         count = self.get_random_dependency_chain_group_count()
         sample_count = min(count, len(id_pool))
         return sorted(random.sample(id_pool, sample_count))
+
+    # ! ==========================================================================================>
+    # ! SIMULATION MODULE REGISTRY HELPERS
+    # ! ==========================================================================================>
+
+    def sync_simulation_module_registry(self) -> None:
+        """Reconcile ``enabled_simulation_modules`` with the runtime registry.
+
+        Newly discovered module keys are added (using ``default_enabled``),
+        keys that are no longer registered are dropped, and ``keys`` /
+        ``labels`` on the setting state are refreshed. Called during
+        ``ApplicationState.initialize()`` after settings load from disk.
+        """
+        from src.simulation.modules.registry import get_module_specs
+
+        state = self.get_state("enabled_simulation_modules")
+        if not isinstance(state, BooleanMappingSettingState):
+            raise TypeError(
+                "enabled_simulation_modules must be a BooleanMappingSettingState"
+            )
+
+        specs = get_module_specs()
+        ordered_keys = tuple(spec.key for spec in specs)
+        existing = state.value
+        merged: dict[str, bool] = {}
+        for spec in specs:
+            if spec.key in existing:
+                merged[spec.key] = bool(existing[spec.key])
+            else:
+                merged[spec.key] = spec.default_enabled
+
+        dropped = sorted(set(existing) - set(ordered_keys))
+        if dropped:
+            logger.info(
+                "Dropping unknown simulation module keys from settings: %s",
+                dropped,
+            )
+
+        state.keys = ordered_keys
+        state.labels = {spec.key: spec.label for spec in specs}
+        state.value = merged
+
+    def iter_enabled_simulation_module_keys(self) -> list[str]:
+        """Return registry keys that are currently enabled in settings."""
+        state = self.get_state("enabled_simulation_modules")
+        if not isinstance(state, BooleanMappingSettingState):
+            return []
+        return [key for key, enabled in state.value.items() if enabled]
+
+    def build_enabled_simulation_modules(self) -> list["SimulationModuleBase"]:
+        """Instantiate the simulation modules currently enabled in settings."""
+        from src.simulation.modules.registry import get_module_specs
+
+        enabled_keys = set(self.iter_enabled_simulation_module_keys())
+        if not enabled_keys:
+            return []
+        instances: list["SimulationModuleBase"] = []
+        for spec in get_module_specs():
+            if spec.key in enabled_keys:
+                instances.append(spec.factory())
+        return instances
 
     # ! ==========================================================================================>
     # ! JSON STATE I/O

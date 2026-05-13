@@ -89,6 +89,43 @@ class SettingState:
                 description=description,
                 value=distribution_from_dict(data["distribution"]),
             )
+        if state_type == "boolean_mapping":
+            raw_value = data.get("value", {})
+            if not isinstance(raw_value, dict):
+                raise ValueError(
+                    f"Boolean mapping setting value must be a JSON object (got {type(raw_value).__name__})"
+                )
+            raw_keys = data.get("keys")
+            keys = tuple(str(k) for k in raw_keys) if raw_keys else None
+            raw_labels = data.get("labels") or {}
+            labels = {str(k): str(v) for k, v in raw_labels.items()}
+            return BooleanMappingSettingState(
+                label=label,
+                description=description,
+                value={str(k): bool(v) for k, v in raw_value.items()},
+                keys=keys,
+                labels=labels,
+                key_label=str(data.get("key_label", "Key")),
+                value_label=str(data.get("value_label", "Enabled")),
+            )
+        if state_type == "mapping":
+            raw_value = data.get("value", {})
+            if not isinstance(raw_value, dict):
+                raise ValueError(
+                    f"Mapping setting value must be a JSON object (got {type(raw_value).__name__})"
+                )
+            raw_keys = data.get("keys")
+            keys = tuple(str(k) for k in raw_keys) if raw_keys else None
+            return MappingSettingState(
+                label=label,
+                description=description,
+                value={str(k): float(v) for k, v in raw_value.items()},
+                keys=keys,
+                min=_optional_float(data.get("min")),
+                max=_optional_float(data.get("max")),
+                key_label=str(data.get("key_label", "Key")),
+                value_label=str(data.get("value_label", "Value")),
+            )
         raise ValueError(f"Unknown setting state type: {state_type!r}")
 
 
@@ -171,6 +208,95 @@ class StringSettingState(SettingState):
             "description": self.description,
             "value": self.value,
             "choices": list(self.choices) if self.choices is not None else None,
+        }
+
+
+@dataclass
+class MappingSettingState(SettingState):
+    """Setting state for an ordered ``dict[str, float]`` mapping.
+
+    When ``keys`` is provided the mapping is constrained to exactly that key set
+    and the ordering is enforced on construction and reconstruction. ``min`` and
+    ``max`` apply to every value in the mapping; ``key_label`` / ``value_label``
+    are presentation hints used by the CLI editor and display helpers.
+    """
+
+    value: dict[str, float] = field(default_factory=dict)
+    keys: tuple[str, ...] | None = None
+    min: float | None = None
+    max: float | None = None
+    key_label: str = "Key"
+    value_label: str = "Value"
+
+    def __post_init__(self) -> None:
+        if self.keys is not None:
+            missing = [key for key in self.keys if key not in self.value]
+            if missing:
+                raise ValueError(
+                    f"Mapping setting is missing required keys: {missing!r}"
+                )
+            self.value = {key: float(self.value[key]) for key in self.keys}
+        else:
+            self.value = {str(k): float(v) for k, v in self.value.items()}
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            "type": "mapping",
+            "label": self.label,
+            "description": self.description,
+            "value": dict(self.value),
+            "keys": list(self.keys) if self.keys is not None else None,
+            "min": self.min,
+            "max": self.max,
+            "key_label": self.key_label,
+            "value_label": self.value_label,
+        }
+
+
+@dataclass
+class BooleanMappingSettingState(SettingState):
+    """Setting state for an ordered ``dict[str, bool]`` mapping.
+
+    When ``keys`` is provided the mapping is constrained to that key set and
+    its ordering is enforced. ``labels`` provides optional display strings
+    keyed by mapping key (used by the CLI editor); missing entries fall back
+    to a humanized version of the key.
+    """
+
+    value: dict[str, bool] = field(default_factory=dict)
+    keys: tuple[str, ...] | None = None
+    labels: dict[str, str] = field(default_factory=dict)
+    key_label: str = "Key"
+    value_label: str = "Enabled"
+
+    def __post_init__(self) -> None:
+        if self.keys is not None:
+            missing = [key for key in self.keys if key not in self.value]
+            if missing:
+                raise ValueError(
+                    f"Boolean mapping setting is missing required keys: {missing!r}"
+                )
+            self.value = {key: bool(self.value[key]) for key in self.keys}
+        else:
+            self.value = {str(k): bool(v) for k, v in self.value.items()}
+        self.labels = {str(k): str(v) for k, v in self.labels.items()}
+
+    def display_label_for(self, key: str) -> str:
+        """Return the display label for ``key`` (fallback humanizes the key)."""
+        if key in self.labels:
+            return self.labels[key]
+        return key.replace("_", " ").title()
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            "type": "boolean_mapping",
+            "label": self.label,
+            "description": self.description,
+            "value": dict(self.value),
+            "keys": list(self.keys) if self.keys is not None else None,
+            "labels": dict(self.labels),
+            "key_label": self.key_label,
+            "value_label": self.value_label,
         }
 
 

@@ -8,21 +8,15 @@ from src.cli.handlers.simulate_handlers import (
     _prompt_for_installation_id,
 )
 from src.cli.menu.menu_factory import get_main_menu, get_simulation_menu
-from src.cli.simulation_shell import build_controls_panel
+from src.cli.simulation_shell_panels import build_controls_panel
 from src.cli.utils import DisplayHelper, InputHelper, NavigationHelper
-from src.config.settings import MIDASSettings
+from src.config import MidasSettings
 from src.simulation import DataGenerator
-
-
-def _loaded_settings() -> MIDASSettings:
-    """Load workbook-backed settings for realistic integration coverage."""
-    return MIDASSettings.from_excel(MIDASSettings.default_config_path())
 
 
 def test_build_installation_selection_rows_reflects_generated_hierarchy_counts() -> None:
     """Selection rows should summarize installation-level hierarchy counts."""
-    settings = _loaded_settings()
-    result = DataGenerator(settings=settings, seed=42).generate_installations(2)
+    result = DataGenerator(seed=42).generate_installations(2)
 
     rows = _build_installation_selection_rows(
         installations=result.installations,
@@ -47,8 +41,8 @@ def test_build_installation_selection_rows_reflects_generated_hierarchy_counts()
 
 def test_prompt_for_installation_id_returns_requested_selection(monkeypatch) -> None:
     """Prompt helper should return the installation chosen by the user."""
-    settings = _loaded_settings()
-    result = DataGenerator(settings=settings, seed=42).generate_installations(2)
+    settings = MidasSettings()
+    result = DataGenerator(seed=42).generate_installations(2)
 
     monkeypatch.setattr(DisplayHelper, "print_table", staticmethod(lambda table: None))
     monkeypatch.setattr(InputHelper, "ask_number", staticmethod(lambda *args, **kwargs: 2))
@@ -60,7 +54,7 @@ def test_prompt_for_installation_id_returns_requested_selection(monkeypatch) -> 
 
 def test_load_or_generate_simulation_result_defaults_to_generation(monkeypatch) -> None:
     """Default CLI source flow should generate a fresh installation."""
-    settings = _loaded_settings()
+    settings = MidasSettings()
 
     monkeypatch.setattr(NavigationHelper, "show_help", staticmethod(lambda *args, **kwargs: None))
     monkeypatch.setattr(InputHelper, "ask_choice", staticmethod(lambda *args, **kwargs: "generate"))
@@ -83,6 +77,9 @@ def test_build_controls_panel_lists_key_instructions() -> None:
     assert "Pause or resume" in output
     assert "Single-step" in output
     assert "Inspect / focus" in output
+    assert "Mission alerts" in output
+    assert "category counts" in output
+    assert "drill down" in output.lower()
     assert "q / Ctrl-C" in output
 
 
@@ -92,7 +89,6 @@ def test_run_time_simulation_is_first_main_menu_option() -> None:
     labels = [item.label for item in menu.config.items if item.visible]
 
     assert labels[0] == "Run Time Simulation"
-    assert "Simulation" in labels
     assert "Configuration" in labels
 
 

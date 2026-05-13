@@ -4,30 +4,22 @@ from pathlib import Path
 
 import pytest
 
-from src.config.settings import MIDASSettings
 from src.enums import UFCGrade, WO_Priority, WO_Status, WO_TradeSkill
+from src.io import DataExporter, SimulationDataLoader
 from src.models import DependencyPosition
-from src.simulation import DataExporter, DataGenerator, SimulationDataLoader
-
-
-def _loaded_settings() -> MIDASSettings:
-    """Load workbook-backed settings for realistic integration coverage."""
-    return MIDASSettings.from_excel(MIDASSettings.default_config_path())
+from src.simulation import DataGenerator
 
 
 @pytest.mark.parametrize("output_format", ["csv", "xlsx"])
 def test_loader_round_trips_normalized_exports(tmp_path: Path, output_format: str) -> None:
     """Loader should rebuild hierarchy objects from normalized exports."""
-    settings = _loaded_settings()
-    result = DataGenerator(settings=settings, seed=42).generate_installations(2)
+    result = DataGenerator(seed=42).generate_installations(2)
     exporter = DataExporter(
         file_name=f"simulation_loader_{output_format}",
         output_format=output_format,
         output_directory=tmp_path,
-        include_time_series=True,
         layout="normalized",
         generate_metadata=True,
-        settings=settings,
     )
     output_path = exporter.export_existing(
         installations=result.installations,
@@ -37,7 +29,7 @@ def test_loader_round_trips_normalized_exports(tmp_path: Path, output_format: st
     )
 
     dataset_path = exporter.config.output_directory if output_format == "csv" else output_path
-    loaded = SimulationDataLoader(settings=settings).load(dataset_path)
+    loaded = SimulationDataLoader().load(dataset_path)
 
     assert len(loaded.installations) == len(result.installations)
     assert len(loaded.facilities) == len(result.facilities)

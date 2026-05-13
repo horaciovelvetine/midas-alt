@@ -231,14 +231,60 @@ Drop a new `SimulationModuleBase` subclass into `src/simulation/modules/`; the r
 
 ## Tests
 
-- `tests/conftest.py`: shared fixtures
-- `tests/unit/test_cli_interrupts.py`: menu/wizard interrupt handling, startup continue prompt
-- `tests/unit/test_simulation_shell_panels.py`: dashboard panel text and mission-alert rules (no Live loop)
-- `tests/integration/test_config_loading_integration.py`: Excel config load
-- `tests/integration/test_generation_and_export_integration.py`: generation + export
-- `tests/integration/test_simulation_loader_integration.py`: CSV/XLSX load
-- `tests/integration/test_simulation_runtime_integration.py`: session, history, pause policy, `SystemDegradationModule`
-- `tests/integration/test_simulation_cli_integration.py`: CLI/menu/shell behaviors
+Tests live under `tests/` and split into two layers:
+
+- `tests/unit/`: fast, isolated tests for helpers, distributions, settings editors, menu/shell panels, simulation modules, formatters, etc.
+- `tests/integration/`: end-to-end flows that drive the loaders, exporters, runtime session, and CLI/menu wiring.
+
+Shared fixtures (including a singleton reset between tests) live in `tests/conftest.py`.
+
+### Running the tests
+
+The repository's `pyproject.toml` configures pytest to run with coverage (`--cov=.`) and write `term-missing`, `htmlcov/`, and `coverage.xml` reports on every run. `.coveragerc` controls what is included and which files are intentionally excluded (`main.py`, `src/config/configure_logging.py`, `src/config/display.py`).
+
+Run the full suite with coverage (recommended):
+
+```bash
+.venv/bin/python -m pytest
+```
+
+Or, using `uv`:
+
+```bash
+uv run pytest
+```
+
+Useful variations:
+
+```bash
+# Quieter output, no banner
+.venv/bin/python -m pytest -q --no-header
+
+# Skip coverage instrumentation (much faster local feedback)
+.venv/bin/python -m pytest --no-cov
+
+# Only unit or only integration tests
+.venv/bin/python -m pytest tests/unit
+.venv/bin/python -m pytest tests/integration
+
+# A single file or a single test
+.venv/bin/python -m pytest tests/unit/test_data_transformer.py
+.venv/bin/python -m pytest tests/unit/test_simulation_shell_panels.py::test_build_inspect_panel_defaults_to_installation
+
+# Stop at the first failure, with short tracebacks
+.venv/bin/python -m pytest -x --tb=short
+```
+
+After a coverage run, open `htmlcov/index.html` in a browser for the per-file drill-down, or inspect `coverage.xml` from CI tooling.
+
+### Focused simulation tests
+
+```bash
+.venv/bin/python -m pytest tests/unit/test_simulation_shell_panels.py tests/unit/test_cli_interrupts.py
+.venv/bin/python -m pytest tests/integration/test_simulation_loader_integration.py
+.venv/bin/python -m pytest tests/integration/test_simulation_runtime_integration.py
+.venv/bin/python -m pytest tests/integration/test_simulation_cli_integration.py
+```
 
 ## Development
 
@@ -246,15 +292,6 @@ Drop a new `SimulationModuleBase` subclass into `src/simulation/modules/`; the r
 uv run pytest
 uv run ruff check .
 uv run ruff format .
-```
-
-Focused simulation tests:
-
-```bash
-uv run pytest tests/unit/test_simulation_shell_panels.py tests/unit/test_cli_interrupts.py
-uv run pytest tests/integration/test_simulation_loader_integration.py
-uv run pytest tests/integration/test_simulation_runtime_integration.py
-uv run pytest tests/integration/test_simulation_cli_integration.py
 ```
 
 ## Further reading

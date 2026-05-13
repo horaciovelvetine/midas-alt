@@ -12,7 +12,6 @@ from src.config import MidasConfigData, MidasSettings
 from src.io import DataExporter, SimulationDataLoader
 from src.models import Facility, Installation, System, WorkOrder
 from src.simulation import DataGenerator, SimulationSession
-from src.simulation.modules.system_degradation import SystemDegradationModule
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -341,11 +340,17 @@ def handle_run_time_simulation() -> None:
         if installation_id is None:
             return
 
+        modules = settings.build_enabled_simulation_modules()
+        if not modules:
+            logger.debug(
+                "No simulation modules are enabled; the simulation tick will not "
+                "mutate domain state until at least one module is enabled in settings."
+            )
         session = SimulationSession.from_data_store(
             data=result,
             settings=settings,
             installation_id=installation_id,
-            modules=[SystemDegradationModule()],
+            modules=modules,
         )
         SimulationShell(session).run()
         InputHelper.wait_for_continue("\nPress Enter to return to the simulation menu")

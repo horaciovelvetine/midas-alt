@@ -6,10 +6,7 @@ from src.cli.handlers.config_handlers import (
     handle_edit_midas_settings,
     handle_reload_configuration,
     handle_save_configuration,
-    handle_view_config_values,
-    handle_view_facility_types_summary,
-    handle_view_installation_locations_summary,
-    handle_view_system_types_summary,
+    handle_view_loaded_config_data,
 )
 from src.cli.handlers.simulate_handlers import (
     handle_generate_data,
@@ -27,29 +24,14 @@ def get_configuration_menu():
     """Create and return the configuration menu."""
     builder = MenuBuilder("Configuration Menu")
     builder.add_item(
-        "View Facility Types Summary",
-        handle_view_facility_types_summary,
-        description="Display a summary of all facility types loaded from the configuration file",
+        "View Loaded Configuration Data",
+        handle_view_loaded_config_data,
+        description="Browse facility types, system types, installation locations, and work-order templates loaded from the configuration workbook",
     )
     builder.add_item(
-        "View System Types Summary",
-        handle_view_system_types_summary,
-        description="Display a summary of all system types loaded from the configuration file",
-    )
-    builder.add_item(
-        "View Installation Locations Summary",
-        handle_view_installation_locations_summary,
-        description="Display a summary of all installation locations loaded from the configuration file",
-    )
-    builder.add_item(
-        "View Config Values",
-        handle_view_config_values,
-        description="View all current configuration values used by the MIDAS application",
-    )
-    builder.add_item(
-        "Edit MIDAS Settings",
+        "View / Edit MIDAS Settings",
         handle_edit_midas_settings,
-        description="Pick any setting and tweak its value, range, or distribution parameters interactively",
+        description="Browse all current configuration values and pick any one to edit (scalars, ranges, mappings, distributions)",
     )
     builder.add_separator()
     builder.add_item(

@@ -14,15 +14,11 @@ class SystemGenerator(DataGeneratorBase):
         """Initialize system generator with optional seed."""
         super().__init__(seed=seed)
 
-    def generate_by_facility(
-        self, facility: Facility
-    ) -> tuple[list[System], list[WorkOrder]]:
+    def generate_by_facility(self, facility: Facility) -> tuple[list[System], list[WorkOrder]]:
         """Generate systems and work orders for a facility."""
         all_systems: list[System] = []
         all_work_orders: list[WorkOrder] = []
-        required_system_types = self.config_data.get_system_types_for_facility(
-            facility.facility_type_key or 0
-        )
+        required_system_types = self.config_data.get_system_types_for_facility(facility.facility_type_key or 0)
         if not required_system_types:
             return [], []
 

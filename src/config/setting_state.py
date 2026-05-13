@@ -25,10 +25,9 @@ class SettingState:
 
         Raises:
             NotImplementedError: If the subclass has not implemented serialization.
+
         """
-        raise NotImplementedError(
-            f"{type(self).__name__} does not implement serialize()"
-        )
+        raise NotImplementedError(f"{type(self).__name__} does not implement serialize()")
 
     @classmethod
     def deserialize(cls, data: dict[str, Any]) -> SettingState:
@@ -42,6 +41,7 @@ class SettingState:
 
         Raises:
             ValueError: If ``data["type"]`` is not a recognised state type.
+
         """
         state_type = data.get("type")
         label = data.get("label", "")
@@ -65,9 +65,7 @@ class SettingState:
         if state_type == "range":
             raw_value = data.get("value")
             if not isinstance(raw_value, (list, tuple)) or len(raw_value) != 2:
-                raise ValueError(
-                    f"Range setting value must be a [min, max] pair (got {raw_value!r})"
-                )
+                raise ValueError(f"Range setting value must be a [min, max] pair (got {raw_value!r})")
             return RangeSettingState(
                 label=label,
                 description=description,
@@ -92,9 +90,7 @@ class SettingState:
         if state_type == "boolean_mapping":
             raw_value = data.get("value", {})
             if not isinstance(raw_value, dict):
-                raise ValueError(
-                    f"Boolean mapping setting value must be a JSON object (got {type(raw_value).__name__})"
-                )
+                raise ValueError(f"Boolean mapping setting value must be a JSON object (got {type(raw_value).__name__})")
             raw_keys = data.get("keys")
             keys = tuple(str(k) for k in raw_keys) if raw_keys else None
             raw_labels = data.get("labels") or {}
@@ -111,9 +107,7 @@ class SettingState:
         if state_type == "mapping":
             raw_value = data.get("value", {})
             if not isinstance(raw_value, dict):
-                raise ValueError(
-                    f"Mapping setting value must be a JSON object (got {type(raw_value).__name__})"
-                )
+                raise ValueError(f"Mapping setting value must be a JSON object (got {type(raw_value).__name__})")
             raw_keys = data.get("keys")
             keys = tuple(str(k) for k in raw_keys) if raw_keys else None
             return MappingSettingState(
@@ -138,6 +132,7 @@ class FloatSettingState(SettingState):
     max: float | None = None
 
     def serialize(self) -> dict[str, Any]:
+        """Return a JSON-compatible dict for this float setting."""
         return {
             "type": "float",
             "label": self.label,
@@ -157,6 +152,7 @@ class IntegerSettingState(SettingState):
     max: int | None = None
 
     def serialize(self) -> dict[str, Any]:
+        """Return a JSON-compatible dict for this integer setting."""
         return {
             "type": "integer",
             "label": self.label,
@@ -176,14 +172,14 @@ class RangeSettingState(SettingState):
     max: int | None = None
 
     def __post_init__(self) -> None:
+        """Coerce ``value`` to a tuple and require a ``(low, high)`` pair."""
         if not isinstance(self.value, tuple):
             self.value = tuple(self.value)  # type: ignore[assignment]
         if len(self.value) != 2:
-            raise ValueError(
-                f"Range setting value must be a (min, max) pair (got {self.value!r})"
-            )
+            raise ValueError(f"Range setting value must be a (min, max) pair (got {self.value!r})")
 
     def serialize(self) -> dict[str, Any]:
+        """Return a JSON-compatible dict for this range setting."""
         return {
             "type": "range",
             "label": self.label,
@@ -202,6 +198,7 @@ class StringSettingState(SettingState):
     choices: tuple[str, ...] | None = None
 
     def serialize(self) -> dict[str, Any]:
+        """Return a JSON-compatible dict for this string setting."""
         return {
             "type": "string",
             "label": self.label,
@@ -229,17 +226,17 @@ class MappingSettingState(SettingState):
     value_label: str = "Value"
 
     def __post_init__(self) -> None:
+        """Validate required keys and normalize value types and ordering."""
         if self.keys is not None:
             missing = [key for key in self.keys if key not in self.value]
             if missing:
-                raise ValueError(
-                    f"Mapping setting is missing required keys: {missing!r}"
-                )
+                raise ValueError(f"Mapping setting is missing required keys: {missing!r}")
             self.value = {key: float(self.value[key]) for key in self.keys}
         else:
             self.value = {str(k): float(v) for k, v in self.value.items()}
 
     def serialize(self) -> dict[str, Any]:
+        """Return a JSON-compatible dict for this mapping setting."""
         return {
             "type": "mapping",
             "label": self.label,
@@ -270,12 +267,11 @@ class BooleanMappingSettingState(SettingState):
     value_label: str = "Enabled"
 
     def __post_init__(self) -> None:
+        """Validate required keys and normalize value/label types and ordering."""
         if self.keys is not None:
             missing = [key for key in self.keys if key not in self.value]
             if missing:
-                raise ValueError(
-                    f"Boolean mapping setting is missing required keys: {missing!r}"
-                )
+                raise ValueError(f"Boolean mapping setting is missing required keys: {missing!r}")
             self.value = {key: bool(self.value[key]) for key in self.keys}
         else:
             self.value = {str(k): bool(v) for k, v in self.value.items()}
@@ -288,6 +284,7 @@ class BooleanMappingSettingState(SettingState):
         return key.replace("_", " ").title()
 
     def serialize(self) -> dict[str, Any]:
+        """Return a JSON-compatible dict for this boolean mapping setting."""
         return {
             "type": "boolean_mapping",
             "label": self.label,
@@ -307,6 +304,7 @@ class DistributionSettingState(SettingState):
     value: DistributionBase = field(default=None)  # type: ignore[assignment]
 
     def serialize(self) -> dict[str, Any]:
+        """Return a JSON-compatible dict for this distribution setting."""
         return {
             "type": "distribution",
             "label": self.label,

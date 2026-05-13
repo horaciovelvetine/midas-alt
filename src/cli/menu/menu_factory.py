@@ -26,7 +26,10 @@ def get_configuration_menu():
     builder.add_item(
         "View Loaded Configuration Data",
         handle_view_loaded_config_data,
-        description="Browse facility types, system types, installation locations, and work-order templates loaded from the configuration workbook",
+        description=(
+            "Browse facility types, system types, installation locations, "
+            "and work-order templates loaded from the configuration workbook"
+        ),
     )
     builder.add_item(
         "View / Edit MIDAS Settings",
@@ -93,7 +96,10 @@ def get_main_menu():
     builder.add_item(
         "Run Time Simulation",
         handle_run_time_simulation,
-        description="Load or generate one installation and run a live time-stepped simulation shell (dashboard includes work-order status counts)",
+        description=(
+            "Load or generate one installation and run a live time-stepped simulation shell "
+            "(dashboard includes work-order status counts)"
+        ),
     )
     builder.add_item(
         "Data Generation & Schema",

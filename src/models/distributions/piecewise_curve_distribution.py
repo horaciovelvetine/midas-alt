@@ -1,7 +1,7 @@
 """Piecewise-linear event rates over age ratio control points."""
 
-from .event_rate_distribution import EventRateDistribution
 from .distribution_context import DistributionContext
+from .event_rate_distribution import EventRateDistribution
 
 
 class PiecewiseCurveDistribution(EventRateDistribution):

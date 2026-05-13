@@ -18,21 +18,13 @@ class WorkOrderGenerator(DataGeneratorBase):
 
     def generate_by_system(self, system: System) -> list[WorkOrder]:
         """Generate work orders for ``system`` from workbook-driven templates."""
-        system_type = (
-            self.config_data.get_system_type(system.system_type_key)
-            if system.system_type_key
-            else None
-        )
+        system_type = self.config_data.get_system_type(system.system_type_key) if system.system_type_key else None
         system_title = getattr(system_type, "title", None)
 
-        context = self.build_system_distribution_context(
-            system=system, system_type=system_type
-        )
+        context = self.build_system_distribution_context(system=system, system_type=system_type)
         horizon_years = max(1.0, float(system.age_years or 1))
 
-        wo_count_distribution = self.settings.get_value(
-            "generated_work_order_count_distribution"
-        )
+        wo_count_distribution = self.settings.get_value("generated_work_order_count_distribution")
         wo_count = self.sample_event_count(
             wo_count_distribution,
             context=context,
@@ -44,12 +36,8 @@ class WorkOrderGenerator(DataGeneratorBase):
             template = self.config_data.sample_work_order_template(system_title)
             status = self._sample_work_order_status()
             request_datetime = self._sample_request_datetime(system, status)
-            completion_datetime = self._sample_completion_datetime(
-                status, request_datetime
-            )
-            problem_description, requested_action, actions_taken = (
-                self._text_fields_from_template(template, status)
-            )
+            completion_datetime = self._sample_completion_datetime(status, request_datetime)
+            problem_description, requested_action, actions_taken = self._text_fields_from_template(template, status)
 
             work_orders.append(
                 WorkOrder(
@@ -72,9 +60,7 @@ class WorkOrderGenerator(DataGeneratorBase):
         return work_orders
 
     def _sample_work_order_status(self) -> WO_Status:
-        distribution = self.settings.get_value(
-            "generated_work_order_status_distribution"
-        )
+        distribution = self.settings.get_value("generated_work_order_status_distribution")
         sampled = distribution.sample()
         return self._to_enum_value(WO_Status, sampled, fallback=WO_Status.SUBMITTED)
 
@@ -92,9 +78,7 @@ class WorkOrderGenerator(DataGeneratorBase):
         """Resolve the sampled template's Work Category to a :class:`WO_Priority`."""
         if template is None:
             return WO_Priority.ROUTINE
-        return self._to_enum_value(
-            WO_Priority, template.work_category, fallback=WO_Priority.ROUTINE
-        )
+        return self._to_enum_value(WO_Priority, template.work_category, fallback=WO_Priority.ROUTINE)
 
     def _text_fields_from_template(
         self, template: WorkOrderText | None, status: WO_Status
@@ -120,9 +104,7 @@ class WorkOrderGenerator(DataGeneratorBase):
 
     def _sample_request_datetime(self, system: System, status: WO_Status) -> datetime:
         now = datetime.now()
-        start_year = system.year_constructed or max(
-            now.year - int(system.age_years or 1), 1900
-        )
+        start_year = system.year_constructed or max(now.year - int(system.age_years or 1), 1900)
         start = datetime(start_year, 1, 1)
         if start > now:
             start = now - timedelta(days=1)
@@ -143,9 +125,7 @@ class WorkOrderGenerator(DataGeneratorBase):
             return now
         return lower + timedelta(seconds=random.randint(0, total_seconds))
 
-    def _sample_completion_datetime(
-        self, status: WO_Status, request_datetime: datetime
-    ) -> datetime | None:
+    def _sample_completion_datetime(self, status: WO_Status, request_datetime: datetime) -> datetime | None:
         if status != WO_Status.COMPLETED:
             return None
         now = datetime.now()

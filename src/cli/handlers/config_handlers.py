@@ -64,9 +64,7 @@ def handle_save_configuration() -> None:
     """Persist current MidasSettings state to the default JSON file."""
     try:
         target = MidasSettings().save_state()
-        DisplayHelper.print_success(
-            f"Saved current settings to: {target}", title="MIDAS"
-        )
+        DisplayHelper.print_success(f"Saved current settings to: {target}", title="MIDAS")
     except OSError as exc:
         DisplayHelper.print_error(f"Failed to save settings: {exc}", title="MIDAS")
         logger.exception("Failed to write MidasSettings state")
@@ -137,12 +135,7 @@ def _view_work_order_text_summary() -> None:
             f"Select a system (1-{len(groups)}) to view its templates, Enter / b / q to return",
             allow_empty=True,
         )
-        if (
-            choice is None
-            or choice == ""
-            or NavigationHelper.can_go_back(choice)
-            or NavigationHelper.should_quit_to_menu(choice)
-        ):
+        if choice is None or choice == "" or NavigationHelper.can_go_back(choice) or NavigationHelper.should_quit_to_menu(choice):
             return
 
         try:
@@ -152,9 +145,7 @@ def _view_work_order_text_summary() -> None:
             InputHelper.wait_for_continue()
             continue
         if not 0 <= index < len(groups):
-            DisplayHelper.print_error(
-                f"Invalid selection. Please enter 1-{len(groups)}."
-            )
+            DisplayHelper.print_error(f"Invalid selection. Please enter 1-{len(groups)}.")
             InputHelper.wait_for_continue()
             continue
 
@@ -166,20 +157,13 @@ def _view_work_order_text_group(system_title: str, rows: list) -> None:
     """Show templates for one system title and allow drill-down into a single row."""
     while True:
         DisplayHelper.clear_screen()
-        DisplayHelper.print_table(
-            create_work_order_texts_for_system_table(rows, system_title=system_title)
-        )
+        DisplayHelper.print_table(create_work_order_texts_for_system_table(rows, system_title=system_title))
 
         choice = InputHelper.get_input_with_backspace(
             f"Select a template (1-{len(rows)}) for full text, Enter / b / q to return",
             allow_empty=True,
         )
-        if (
-            choice is None
-            or choice == ""
-            or NavigationHelper.can_go_back(choice)
-            or NavigationHelper.should_quit_to_menu(choice)
-        ):
+        if choice is None or choice == "" or NavigationHelper.can_go_back(choice) or NavigationHelper.should_quit_to_menu(choice):
             return
 
         try:

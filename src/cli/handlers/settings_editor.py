@@ -92,6 +92,7 @@ def run_settings_editor() -> bool:
 
     Returns:
         ``True`` if any setting value was modified during the session.
+
     """
     settings = MidasSettings()
     any_changed = False
@@ -133,17 +134,13 @@ def run_settings_editor() -> bool:
         try:
             changed = edit_setting(name, state)
         except (ValueError, TypeError) as exc:
-            DisplayHelper.print_error(
-                f"Could not update {name!r}: {exc}", title="Settings"
-            )
+            DisplayHelper.print_error(f"Could not update {name!r}: {exc}", title="Settings")
             logger.exception("Failed to edit setting %s", name)
             InputHelper.wait_for_continue()
             continue
         if changed:
             any_changed = True
-            DisplayHelper.print_success(
-                f"Updated '{state.label or name}'.", title="Settings"
-            )
+            DisplayHelper.print_success(f"Updated '{state.label or name}'.", title="Settings")
 
 
 def edit_setting(name: str, state: SettingState) -> bool:
@@ -151,6 +148,7 @@ def edit_setting(name: str, state: SettingState) -> bool:
 
     Returns:
         ``True`` if the underlying value was changed.
+
     """
     if isinstance(state, FloatSettingState):
         return _edit_float(name, state)
@@ -222,11 +220,7 @@ def _print_settings_index(settings: MidasSettings, ordered_names: list[str]) -> 
             _format_setting_description(state),
         )
 
-    dirty_marker = (
-        Text(" [unsaved changes]", style="bold red")
-        if settings.is_dirty()
-        else Text("")
-    )
+    dirty_marker = Text(" [unsaved changes]", style="bold red") if settings.is_dirty() else Text("")
     header = Text("Pick a number to edit a setting; 'b' returns to the previous menu.")
     console.print("\n")
     console.print(Panel(Text.assemble(header, dirty_marker), border_style="cyan"))
@@ -249,11 +243,7 @@ def _setting_kind_label(state: SettingState) -> str:
         return "mapping"
     if isinstance(state, DistributionSettingState):
         dist = state.value
-        return (
-            f"distribution ({type(dist).__name__})"
-            if dist is not None
-            else "distribution"
-        )
+        return f"distribution ({type(dist).__name__})" if dist is not None else "distribution"
     return type(state).__name__
 
 
@@ -320,9 +310,7 @@ def _create_boolean_mapping_value_table(state: BooleanMappingSettingState) -> Ta
     )
     table.add_column(state.key_label or "Key", style="cyan")
     table.add_column(state.value_label or "Enabled", style="white", justify="right")
-    ordered_keys = (
-        list(state.keys) if state.keys is not None else list(state.value.keys())
-    )
+    ordered_keys = list(state.keys) if state.keys is not None else list(state.value.keys())
     for key in ordered_keys:
         enabled = bool(state.value.get(key, False))
         label = state.display_label_for(key)
@@ -350,7 +338,7 @@ def _edit_float(name: str, state: FloatSettingState) -> bool:
         title="Edit Float",
     )
     new_value = _prompt_float(
-        f"New value (blank to cancel)",
+        "New value (blank to cancel)",
         default=state.value,
         minimum=state.min,
         maximum=state.max,
@@ -390,8 +378,7 @@ def _edit_range(name: str, state: RangeSettingState) -> bool:
     """Prompt for ``low`` then ``high``; values are swapped if reversed."""
     low_current, high_current = state.value
     DisplayHelper.print_info(
-        f"{state.label or name}\n{state.description}\n"
-        f"Current: {low_current}-{high_current}{_bounds_hint(state.min, state.max)}",
+        f"{state.label or name}\n{state.description}\nCurrent: {low_current}-{high_current}{_bounds_hint(state.min, state.max)}",
         title="Edit Range",
     )
     new_low = InputHelper.ask_number(
@@ -465,19 +452,14 @@ def _edit_mapping(name: str, state: MappingSettingState) -> bool:
     least one entry actually changes.
     """
     DisplayHelper.print_info(
-        f"{state.label or name}\n{state.description}\n"
-        f"{_bounds_hint(state.min, state.max).strip() or 'No per-value bounds.'}",
+        f"{state.label or name}\n{state.description}\n{_bounds_hint(state.min, state.max).strip() or 'No per-value bounds.'}",
         title="Edit Mapping",
     )
     _print_mapping_entries(state)
 
-    ordered_keys = (
-        list(state.keys) if state.keys is not None else list(state.value.keys())
-    )
+    ordered_keys = list(state.keys) if state.keys is not None else list(state.value.keys())
     if not ordered_keys:
-        DisplayHelper.print_warning(
-            "This mapping has no editable entries.", title="Edit Mapping"
-        )
+        DisplayHelper.print_warning("This mapping has no editable entries.", title="Edit Mapping")
         InputHelper.wait_for_continue()
         return False
 
@@ -516,9 +498,7 @@ def _edit_boolean_mapping(name: str, state: BooleanMappingSettingState) -> bool:
         title="Edit Toggle Map",
     )
 
-    ordered_keys = (
-        list(state.keys) if state.keys is not None else list(state.value.keys())
-    )
+    ordered_keys = list(state.keys) if state.keys is not None else list(state.value.keys())
     if not ordered_keys:
         DisplayHelper.print_warning(
             "This toggle map has no editable entries.",
@@ -527,9 +507,7 @@ def _edit_boolean_mapping(name: str, state: BooleanMappingSettingState) -> bool:
         InputHelper.wait_for_continue()
         return False
 
-    working: dict[str, bool] = {
-        key: bool(state.value.get(key, False)) for key in ordered_keys
-    }
+    working: dict[str, bool] = {key: bool(state.value.get(key, False)) for key in ordered_keys}
     initial = dict(working)
 
     while True:
@@ -545,10 +523,10 @@ def _edit_boolean_mapping(name: str, state: BooleanMappingSettingState) -> bool:
         if action is None or action is InputHelper.QUIT_TO_MENU or action == "d":
             break
         if action == "a":
-            working = {key: True for key in ordered_keys}
+            working = dict.fromkeys(ordered_keys, True)
             continue
         if action == "n":
-            working = {key: False for key in ordered_keys}
+            working = dict.fromkeys(ordered_keys, False)
             continue
         try:
             index = int(action)
@@ -632,8 +610,7 @@ def _edit_distribution(name: str, state: DistributionSettingState) -> bool:
         return False
 
     DisplayHelper.print_info(
-        f"{state.label or name}\n{state.description}\n"
-        f"Type: {type(distribution).__name__}",
+        f"{state.label or name}\n{state.description}\nType: {type(distribution).__name__}",
         title="Edit Distribution",
     )
     console.print(_create_count_distribution_table(distribution))
@@ -657,14 +634,9 @@ def _edit_distribution(name: str, state: DistributionSettingState) -> bool:
     return False
 
 
-def _edit_weighted_distribution(
-    name: str, distribution: WeightedProbabilityDistribution
-) -> bool:
+def _edit_weighted_distribution(name: str, distribution: WeightedProbabilityDistribution) -> bool:
     """Sub-loop for adding / editing / removing weighted segments."""
-    working = [
-        WeightedProbabilitySegment(seg.weight_percent, seg.value)
-        for seg in distribution.segments
-    ]
+    working = [WeightedProbabilitySegment(seg.weight_percent, seg.value) for seg in distribution.segments]
     changed = False
     while True:
         _print_weighted_segments(working)
@@ -727,9 +699,7 @@ def _prompt_add_segment(segments: list[WeightedProbabilitySegment]) -> bool:
     )
     if weight is None or weight is InputHelper.QUIT_TO_MENU:
         return False
-    raw_value = InputHelper.get_input_with_backspace(
-        "New segment value (blank to cancel)", allow_empty=True
-    )
+    raw_value = InputHelper.get_input_with_backspace("New segment value (blank to cancel)", allow_empty=True)
     if raw_value is None or raw_value == "":
         return False
     try:
@@ -793,9 +763,7 @@ def _prompt_remove_segment(segments: list[WeightedProbabilitySegment]) -> bool:
     return True
 
 
-def _edit_bathtub_distribution(
-    name: str, distribution: BathtubCurveDistribution
-) -> bool:
+def _edit_bathtub_distribution(name: str, distribution: BathtubCurveDistribution) -> bool:
     """Edit each named float field on a bathtub curve."""
     fields = (
         ("early_peak_rate", "Early peak rate"),
@@ -805,9 +773,7 @@ def _edit_bathtub_distribution(
         ("wearout_start_ratio", "Wearout start ratio"),
         ("max_ratio", "Max ratio"),
     )
-    return _edit_named_float_fields(
-        name, distribution, fields, BathtubCurveDistribution
-    )
+    return _edit_named_float_fields(name, distribution, fields, BathtubCurveDistribution)
 
 
 def _edit_normal_distribution(name: str, distribution: NormalCurveDistribution) -> bool:
@@ -821,15 +787,12 @@ def _edit_normal_distribution(name: str, distribution: NormalCurveDistribution) 
     return _edit_named_float_fields(name, distribution, fields, NormalCurveDistribution)
 
 
-def _edit_event_rate_distribution(
-    name: str, distribution: EventRateDistribution
-) -> bool:
-    """Generic editor for any other ``EventRateDistribution`` subclass."""
+def _edit_event_rate_distribution(name: str, distribution: EventRateDistribution) -> bool:
+    """Edit any other ``EventRateDistribution`` subclass via its scalar fields."""
     fields = tuple(
         (attr, attr.replace("_", " ").title())
         for attr in vars(distribution)
-        if not attr.startswith("_")
-        and isinstance(getattr(distribution, attr), (int, float))
+        if not attr.startswith("_") and isinstance(getattr(distribution, attr), (int, float))
     )
     if not fields:
         DisplayHelper.print_warning(
@@ -861,17 +824,13 @@ def _edit_named_float_fields(
     try:
         new_distribution = cls(**values)
     except (TypeError, ValueError) as exc:
-        DisplayHelper.print_error(
-            f"Invalid distribution parameters: {exc}", title="Edit Distribution"
-        )
+        DisplayHelper.print_error(f"Invalid distribution parameters: {exc}", title="Edit Distribution")
         return False
     MidasSettings().set_value(name, new_distribution)
     return True
 
 
-def _edit_piecewise_distribution(
-    name: str, distribution: PiecewiseCurveDistribution
-) -> bool:
+def _edit_piecewise_distribution(name: str, distribution: PiecewiseCurveDistribution) -> bool:
     """Sub-loop for editing piecewise (age_ratio, rate) control points."""
     working: list[tuple[float, float]] = list(distribution.points)
     changed = False
@@ -930,9 +889,7 @@ def _edit_piecewise_distribution(
     try:
         new_distribution = PiecewiseCurveDistribution(working)
     except ValueError as exc:
-        DisplayHelper.print_error(
-            f"Invalid piecewise points: {exc}", title="Edit Distribution"
-        )
+        DisplayHelper.print_error(f"Invalid piecewise points: {exc}", title="Edit Distribution")
         return False
     MidasSettings().set_value(name, new_distribution)
     return True

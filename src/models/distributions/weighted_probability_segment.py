@@ -102,6 +102,4 @@ class WeightedProbabilitySegment:
     @staticmethod
     def is_matching_segment_data_format(line_value: str) -> re.Match[str] | None:
         """Check whether text matches a supported segment pattern."""
-        return re.match(
-            r"(?:\d+:)?\s*\(?\s*(\d+)\s*[,|:]\s*(\d+)\s*-\s*(\d+)\s*\)?", line_value
-        )
+        return re.match(r"(?:\d+:)?\s*\(?\s*(\d+)\s*[,|:]\s*(\d+)\s*-\s*(\d+)\s*\)?", line_value)

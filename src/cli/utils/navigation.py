@@ -46,7 +46,7 @@ class NavigationHelper:
 
     @staticmethod
     def should_quit_to_menu(value: str | None) -> bool:
-        """True for Ctrl-C / EOF (None) or explicit q / quit (leave current flow for the parent menu)."""
+        """Return ``True`` for Ctrl-C / EOF (None) or explicit ``q`` / ``quit`` input."""
         if value is None:
             return True
         return value.lower().strip() in ["q", "quit"]

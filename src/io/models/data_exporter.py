@@ -35,6 +35,7 @@ class DataExporter:
             layout: Output layout (normalized or denormalized).
             generate_metadata: Whether to generate a metadata JSON file.
             description: Optional description for the dataset.
+
         """
         from src.simulation.data_generation import DataGenerator
 
@@ -73,9 +74,7 @@ class DataExporter:
             return CSVFormatter(self.config, self.transformer)
         if fmt == "xlsx":
             return ExcelFormatter(self.config, self.transformer)
-        raise ValueError(
-            f"Invalid output format: expected one of ['csv', 'xlsx'] (got {self.config.output_format!r})"
-        )
+        raise ValueError(f"Invalid output format: expected one of ['csv', 'xlsx'] (got {self.config.output_format!r})")
 
     @property
     def file_path(self) -> Path:
@@ -95,16 +94,12 @@ class DataExporter:
         """Generate simulated data and export to file."""
         if method == "installations":
             if target_count is None:
-                raise ValueError(
-                    "Invalid argument: target_count is required for method 'installations' (got None)"
-                )
+                raise ValueError("Invalid argument: target_count is required for method 'installations' (got None)")
             result = self.generator.generate_installations(target_count)
 
         elif method == "facilities":
             if target_count is None:
-                raise ValueError(
-                    "Invalid argument: target_count is required for method 'facilities' (got None)"
-                )
+                raise ValueError("Invalid argument: target_count is required for method 'facilities' (got None)")
             result = self.generator.generate_installation()
             installations = list(result.installations)
             facilities = list(result.facilities)
@@ -128,13 +123,9 @@ class DataExporter:
         facilities = result.facilities
         systems = result.systems
         work_orders = result.work_orders
-        metadata = self._create_metadata(
-            method, target_count, installations, facilities, systems, work_orders
-        )
+        metadata = self._create_metadata(method, target_count, installations, facilities, systems, work_orders)
 
-        return self.formatter.export(
-            installations, facilities, systems, work_orders, metadata
-        )
+        return self.formatter.export(installations, facilities, systems, work_orders, metadata)
 
     def export_existing(
         self,
@@ -144,12 +135,8 @@ class DataExporter:
         work_orders: list[WorkOrder],
     ) -> Path:
         """Export existing data (not generated)."""
-        metadata = self._create_metadata(
-            "existing", None, installations, facilities, systems, work_orders
-        )
-        return self.formatter.export(
-            installations, facilities, systems, work_orders, metadata
-        )
+        metadata = self._create_metadata("existing", None, installations, facilities, systems, work_orders)
+        return self.formatter.export(installations, facilities, systems, work_orders, metadata)
 
     def _create_metadata(
         self,

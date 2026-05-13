@@ -1,13 +1,13 @@
 """Re-export distribution protocols and concrete curve/segment implementations."""
 
-from .distribution_context import DistributionContext
-from .distribution_base import DistributionBase
-from .event_rate_distribution import EventRateDistribution
-from .weighted_probability_segment import WeightedProbabilitySegment
-from .weighted_probability_distribution import WeightedProbabilityDistribution
-from .normal_curve_distribution import NormalCurveDistribution
 from .bathtub_curve_distribution import BathtubCurveDistribution
+from .distribution_base import DistributionBase
+from .distribution_context import DistributionContext
+from .event_rate_distribution import EventRateDistribution
+from .normal_curve_distribution import NormalCurveDistribution
 from .piecewise_curve_distribution import PiecewiseCurveDistribution
+from .weighted_probability_distribution import WeightedProbabilityDistribution
+from .weighted_probability_segment import WeightedProbabilitySegment
 
 _DISTRIBUTION_REGISTRY: dict[str, type] = {
     "WeightedProbabilityDistribution": WeightedProbabilityDistribution,
@@ -28,6 +28,7 @@ def distribution_from_dict(data: dict) -> DistributionBase:
 
     Raises:
         ValueError: If ``distribution_type`` is missing or unrecognised.
+
     """
     dist_type = data.get("distribution_type")
     cls = _DISTRIBUTION_REGISTRY.get(dist_type) if dist_type else None

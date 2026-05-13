@@ -38,9 +38,7 @@ class SimulationDataLoader:
         elif path.is_file() and path.suffix.lower() == ".xlsx":
             tables = self._load_excel_tables(path)
         else:
-            raise ValueError(
-                "SimulationDataLoader expects a normalized CSV dataset directory or an XLSX workbook path"
-            )
+            raise ValueError("SimulationDataLoader expects a normalized CSV dataset directory or an XLSX workbook path")
         return self._build_data_store(tables)
 
     def _load_csv_tables(self, dataset_directory: Path) -> dict[str, pd.DataFrame]:
@@ -53,13 +51,9 @@ class SimulationDataLoader:
             if not candidates:
                 candidates = sorted(dataset_directory.glob(f"{table_name}.csv"))
             if not candidates:
-                raise ValueError(
-                    f"Missing required CSV table '{table_name}' in {dataset_directory}"
-                )
+                raise ValueError(f"Missing required CSV table '{table_name}' in {dataset_directory}")
             if len(candidates) > 1:
-                raise ValueError(
-                    f"Multiple CSV files matched '{table_name}' in {dataset_directory}"
-                )
+                raise ValueError(f"Multiple CSV files matched '{table_name}' in {dataset_directory}")
             tables[table_name] = pd.read_csv(candidates[0])
 
         return tables
@@ -75,19 +69,12 @@ class SimulationDataLoader:
             "work_orders": self.settings.get_value("excel_sheet_work_orders"),
         }
 
-        missing = [
-            sheet_name
-            for sheet_name in required_sheets.values()
-            if sheet_name not in sheet_names
-        ]
+        missing = [sheet_name for sheet_name in required_sheets.values() if sheet_name not in sheet_names]
         if missing:
-            raise ValueError(
-                f"Workbook is missing required sheets: {', '.join(missing)}"
-            )
+            raise ValueError(f"Workbook is missing required sheets: {', '.join(missing)}")
 
         return {
-            table_name: pd.read_excel(workbook_path, sheet_name=sheet_name)
-            for table_name, sheet_name in required_sheets.items()
+            table_name: pd.read_excel(workbook_path, sheet_name=sheet_name) for table_name, sheet_name in required_sheets.items()
         }
 
     def _build_data_store(self, tables: dict[str, pd.DataFrame]) -> DataStore:
@@ -97,20 +84,13 @@ class SimulationDataLoader:
         systems = self._build_systems(tables["systems"])
         work_orders = self._build_work_orders(tables["work_orders"])
 
-        installations_by_id = {
-            installation.id: installation for installation in installations
-        }
+        installations_by_id = {installation.id: installation for installation in installations}
         facilities_by_id = {facility.id: facility for facility in facilities}
         systems_by_id = {system.id: system for system in systems}
 
         for facility in facilities:
-            if (
-                facility.installation_id
-                and facility.installation_id in installations_by_id
-            ):
-                installations_by_id[facility.installation_id].facility_ids.append(
-                    facility.id
-                )
+            if facility.installation_id and facility.installation_id in installations_by_id:
+                installations_by_id[facility.installation_id].facility_ids.append(facility.id)
 
         for system in systems:
             if system.facility_id and system.facility_id in facilities_by_id:
@@ -160,9 +140,7 @@ class SimulationDataLoader:
                     facility_type_key=type_key,
                     facility_type_title=resolved_title,
                     year_constructed=_int_value(row, "year_constructed"),
-                    dependency_position=DependencyPosition.from_string(
-                        dependency_value or "A1"
-                    ),
+                    dependency_position=DependencyPosition.from_string(dependency_value or "A1"),
                     resiliency_grade=UFCGrade.from_value(row.get("resiliency_grade")),
                     installation_id=_text(row, "installation_id"),
                     condition_index=_float_value(row, "condition_index"),

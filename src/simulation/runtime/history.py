@@ -35,9 +35,7 @@ class ConditionHistoryStore:
 
     snapshots: list[ConditionIndexSnapshot] = field(default_factory=list)
 
-    def record_installation(
-        self, installation: Installation, current_date: date, tick_index: int
-    ) -> None:
+    def record_installation(self, installation: Installation, current_date: date, tick_index: int) -> None:
         """Record a point-in-time installation snapshot."""
         self.snapshots.append(
             ConditionIndexSnapshot(
@@ -50,9 +48,7 @@ class ConditionHistoryStore:
             )
         )
 
-    def record_facility(
-        self, facility: Facility, current_date: date, tick_index: int
-    ) -> None:
+    def record_facility(self, facility: Facility, current_date: date, tick_index: int) -> None:
         """Record a point-in-time facility snapshot."""
         self.snapshots.append(
             ConditionIndexSnapshot(
@@ -96,13 +92,9 @@ class ConditionHistoryStore:
         tick_index: int,
     ) -> None:
         """Record the current state of the active installation hierarchy."""
-        self.record_installation(
-            installation, current_date=current_date, tick_index=tick_index
-        )
+        self.record_installation(installation, current_date=current_date, tick_index=tick_index)
         for facility in facilities:
-            self.record_facility(
-                facility, current_date=current_date, tick_index=tick_index
-            )
+            self.record_facility(facility, current_date=current_date, tick_index=tick_index)
         for system in systems:
             self.record_system(
                 system,
@@ -125,7 +117,7 @@ class ConditionHistoryExportAdapter:
     def __init__(
         self,
         history: ConditionHistoryStore,
-        config_data: "MidasConfigData | None" = None,
+        config_data: MidasConfigData | None = None,
     ) -> None:
         """Initialize the export adapter (reference data resolves from the singleton)."""
         from src.config.midas_config_data import MidasConfigData
@@ -146,9 +138,7 @@ class ConditionHistoryExportAdapter:
             "system_time_series": self._build_system_history(systems),
         }
 
-    def _build_installation_history(
-        self, installation: Installation
-    ) -> pd.DataFrame | None:
+    def _build_installation_history(self, installation: Installation) -> pd.DataFrame | None:
         """Build the installation history table."""
         rows = [
             {
@@ -165,9 +155,7 @@ class ConditionHistoryExportAdapter:
         ]
         return pd.DataFrame(rows) if rows else None
 
-    def _build_facility_history(
-        self, facilities: list[Facility]
-    ) -> pd.DataFrame | None:
+    def _build_facility_history(self, facilities: list[Facility]) -> pd.DataFrame | None:
         """Build the facility history table."""
         facilities_by_id = {facility.id: facility for facility in facilities}
         rows = []
@@ -177,9 +165,7 @@ class ConditionHistoryExportAdapter:
             facility = facilities_by_id.get(snapshot.entity_id)
             if facility is None:
                 continue
-            facility_type = self.config_data.get_facility_type(
-                facility.facility_type_key or 0
-            )
+            facility_type = self.config_data.get_facility_type(facility.facility_type_key or 0)
             rows.append(
                 {
                     "entity_id": snapshot.entity_id,

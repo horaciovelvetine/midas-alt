@@ -1,5 +1,6 @@
 """MIDAS simulation package for data generation and runtime behavior."""
 
+from .data_generation import DataGenerator
 from .runtime import (
     ConditionHistoryExportAdapter,
     ConditionHistoryStore,
@@ -10,8 +11,6 @@ from .runtime import (
     TickSize,
     TickUnit,
 )
-
-from .data_generation import DataGenerator
 
 __all__ = [
     # Generator

@@ -17,12 +17,8 @@ class DataTransformer:
 
     def _facility_type_title(self, facility: Facility) -> str:
         """Resolve facility type title from denormalized data or reference lookup."""
-        facility_type = self.config_data.get_facility_type(
-            facility.facility_type_key or 0
-        )
-        return (facility.facility_type_title or "").strip() or (
-            facility_type.title if facility_type else ""
-        )
+        facility_type = self.config_data.get_facility_type(facility.facility_type_key or 0)
+        return (facility.facility_type_title or "").strip() or (facility_type.title if facility_type else "")
 
     def create_normalized_tables(
         self,
@@ -56,9 +52,7 @@ class DataTransformer:
 
         facilities_rows = []
         for facility in facilities:
-            facility_type = self.config_data.get_facility_type(
-                facility.facility_type_key or 0
-            )
+            facility_type = self.config_data.get_facility_type(facility.facility_type_key or 0)
             facilities_rows.append(
                 {
                     "id": facility.id,
@@ -69,17 +63,9 @@ class DataTransformer:
                     "age_years": facility.age_years,
                     "condition_index": facility.condition_index,
                     "dependency_chain": facility.dependency_position,
-                    "resiliency_grade": (
-                        facility.resiliency_grade.value
-                        if facility.resiliency_grade
-                        else None
-                    ),
-                    "life_expectancy": (
-                        facility_type.life_expectancy if facility_type else None
-                    ),
-                    "mission_criticality": (
-                        facility_type.mission_criticality if facility_type else None
-                    ),
+                    "resiliency_grade": (facility.resiliency_grade.value if facility.resiliency_grade else None),
+                    "life_expectancy": (facility_type.life_expectancy if facility_type else None),
+                    "mission_criticality": (facility_type.mission_criticality if facility_type else None),
                 }
             )
 
@@ -95,9 +81,7 @@ class DataTransformer:
                     "year_constructed": system.year_constructed,
                     "age_years": system.age_years,
                     "condition_index": system.condition_index,
-                    "life_expectancy": (
-                        system_type.life_expectancy if system_type else None
-                    ),
+                    "life_expectancy": (system_type.life_expectancy if system_type else None),
                 }
             )
 
@@ -113,9 +97,7 @@ class DataTransformer:
                     "work_category": work_order.work_category,
                     "impacts_mission": work_order.impacts_mission,
                     "status": work_order.status.value if work_order.status else None,
-                    "priority": (
-                        work_order.priority.value if work_order.priority else None
-                    ),
+                    "priority": (work_order.priority.value if work_order.priority else None),
                     "trade": work_order.trade.value if work_order.trade else None,
                     "request_datetime": work_order.request_datetime,
                     "completion_datetime": work_order.completion_datetime,
@@ -126,9 +108,7 @@ class DataTransformer:
             )
 
         return {
-            "installations": (
-                pd.DataFrame(installations_rows) if installations_rows else None
-            ),
+            "installations": (pd.DataFrame(installations_rows) if installations_rows else None),
             "facilities": pd.DataFrame(facilities_rows) if facilities_rows else None,
             "systems": pd.DataFrame(systems_rows) if systems_rows else None,
             "work_orders": pd.DataFrame(work_orders_rows) if work_orders_rows else None,
@@ -158,9 +138,6 @@ class DataTransformer:
             if not install:
                 continue
 
-            facility_type = self.config_data.get_facility_type(
-                facility.facility_type_key or 0
-            )
             system_type = self.config_data.get_system_type(system.system_type_key or 0)
 
             row = {
@@ -177,11 +154,7 @@ class DataTransformer:
                 "facility_age_years": facility.age_years,
                 "facility_condition_index": facility.condition_index,
                 "facility_dependency_chain": facility.dependency_position,
-                "facility_resiliency_grade": (
-                    facility.resiliency_grade.value
-                    if facility.resiliency_grade
-                    else None
-                ),
+                "facility_resiliency_grade": (facility.resiliency_grade.value if facility.resiliency_grade else None),
                 "system_id": system.id,
                 "system_type_key": system.system_type_key,
                 "system_title": system_type.title if system_type else "",
@@ -189,15 +162,9 @@ class DataTransformer:
                 "system_age_years": system.age_years,
                 "system_condition_index": system.condition_index,
                 "work_order_id": work_order.id,
-                "work_order_status": (
-                    work_order.status.value if work_order.status else None
-                ),
-                "work_order_priority": (
-                    work_order.priority.value if work_order.priority else None
-                ),
-                "work_order_trade": (
-                    work_order.trade.value if work_order.trade else None
-                ),
+                "work_order_status": (work_order.status.value if work_order.status else None),
+                "work_order_priority": (work_order.priority.value if work_order.priority else None),
+                "work_order_trade": (work_order.trade.value if work_order.trade else None),
                 "work_order_requesting_organization": work_order.requesting_organization,
                 "work_order_impacts_mission": work_order.impacts_mission,
                 "work_order_request_datetime": work_order.request_datetime,
@@ -230,9 +197,7 @@ class DataTransformer:
         for work_order in work_orders:
             if not work_order.system_id:
                 continue
-            work_orders_by_system.setdefault(work_order.system_id, []).append(
-                work_order
-            )
+            work_orders_by_system.setdefault(work_order.system_id, []).append(work_order)
 
         data = []
         for install in installations:
@@ -255,18 +220,12 @@ class DataTransformer:
                     "age_years": facility.age_years,
                     "condition_index": facility.condition_index,
                     "dependency_chain": facility.dependency_position,
-                    "resiliency_grade": (
-                        facility.resiliency_grade.value
-                        if facility.resiliency_grade
-                        else None
-                    ),
+                    "resiliency_grade": (facility.resiliency_grade.value if facility.resiliency_grade else None),
                     "systems": [],
                 }
 
                 for system in systems_by_facility.get(facility.id, []):
-                    system_type = self.config_data.get_system_type(
-                        system.system_type_key or 0
-                    )
+                    system_type = self.config_data.get_system_type(system.system_type_key or 0)
                     system_data = {
                         "id": system.id,
                         "system_type_key": system.system_type_key,
@@ -280,19 +239,9 @@ class DataTransformer:
                         system_data["work_orders"].append(
                             {
                                 "id": work_order.id,
-                                "status": (
-                                    work_order.status.value
-                                    if work_order.status
-                                    else None
-                                ),
-                                "priority": (
-                                    work_order.priority.value
-                                    if work_order.priority
-                                    else None
-                                ),
-                                "trade": (
-                                    work_order.trade.value if work_order.trade else None
-                                ),
+                                "status": (work_order.status.value if work_order.status else None),
+                                "priority": (work_order.priority.value if work_order.priority else None),
+                                "trade": (work_order.trade.value if work_order.trade else None),
                                 "requesting_organization": work_order.requesting_organization,
                                 "impacts_mission": work_order.impacts_mission,
                                 "request_datetime": work_order.request_datetime,

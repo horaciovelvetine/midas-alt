@@ -1,7 +1,7 @@
 """Bathtub-shaped hazard curve over normalized asset age."""
 
-from .event_rate_distribution import EventRateDistribution
 from .distribution_context import DistributionContext
+from .event_rate_distribution import EventRateDistribution
 
 
 class BathtubCurveDistribution(EventRateDistribution):
@@ -53,10 +53,7 @@ class BathtubCurveDistribution(EventRateDistribution):
             if self.early_end_ratio == 0:
                 return max(0.0, self.useful_life_rate)
             pct = x / self.early_end_ratio
-            value = (
-                self.early_peak_rate
-                + (self.useful_life_rate - self.early_peak_rate) * pct
-            )
+            value = self.early_peak_rate + (self.useful_life_rate - self.early_peak_rate) * pct
             return max(0.0, value)
 
         if x < self.wearout_start_ratio:
@@ -64,8 +61,5 @@ class BathtubCurveDistribution(EventRateDistribution):
 
         span = max(1e-9, self.max_ratio - self.wearout_start_ratio)
         pct = (x - self.wearout_start_ratio) / span
-        value = (
-            self.useful_life_rate
-            + (self.wearout_peak_rate - self.useful_life_rate) * pct
-        )
+        value = self.useful_life_rate + (self.wearout_peak_rate - self.useful_life_rate) * pct
         return max(0.0, value)

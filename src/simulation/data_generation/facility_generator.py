@@ -17,9 +17,7 @@ class FacilityGenerator(DataGeneratorBase):
         """Initialize facility generator with optional seed."""
         super().__init__(seed=seed)
 
-    def generate_by_count(
-        self, installation_id: str, count: int
-    ) -> tuple[list[Facility], list[System], list[WorkOrder]]:
+    def generate_by_count(self, installation_id: str, count: int) -> tuple[list[Facility], list[System], list[WorkOrder]]:
         """Generate facility hierarchies for a single installation."""
         if count <= 0:
             return [], [], []
@@ -35,11 +33,7 @@ class FacilityGenerator(DataGeneratorBase):
 
         for idx in range(count):
             if available_facility_types:
-                uncreated = [
-                    key
-                    for key in available_facility_types
-                    if key not in created_facility_type_keys
-                ]
+                uncreated = [key for key in available_facility_types if key not in created_facility_type_keys]
                 candidate_pool = uncreated if uncreated else available_facility_types
                 facility_type_key = self.random_choice(candidate_pool)
             else:
@@ -56,9 +50,7 @@ class FacilityGenerator(DataGeneratorBase):
                 dependency_position=dependency_positions[idx],
             )
 
-            generated_systems, generated_work_orders = (
-                system_generator.generate_by_facility(facility)
-            )
+            generated_systems, generated_work_orders = system_generator.generate_by_facility(facility)
             for work_order in generated_work_orders:
                 work_order.installation_id = installation_id
             facility.system_ids = [system.id for system in generated_systems]
@@ -80,20 +72,12 @@ class FacilityGenerator(DataGeneratorBase):
             return [DependencyPosition(vertical_position="A", group_ids=[1])]
 
         for _ in range(count):
-            vertical_position = (
-                self.settings.get_random_dependency_chain_vertical_position()
-            )
+            vertical_position = self.settings.get_random_dependency_chain_vertical_position()
             group_ids = self.settings.get_random_dependency_chain_group_ids()
-            positions.append(
-                DependencyPosition(
-                    vertical_position=vertical_position, group_ids=group_ids
-                )
-            )
+            positions.append(DependencyPosition(vertical_position=vertical_position, group_ids=group_ids))
         return self._validate_dependency_positions_set(positions=positions)
 
-    def _validate_dependency_positions_set(
-        self, positions: list[DependencyPosition]
-    ) -> list[DependencyPosition]:
+    def _validate_dependency_positions_set(self, positions: list[DependencyPosition]) -> list[DependencyPosition]:
         """Ensure dependency positions form valid hierarchies."""
         for _ in range(10):
             group_levels: dict[int, set[str]] = defaultdict(set)
@@ -150,9 +134,7 @@ class FacilityGenerator(DataGeneratorBase):
 
             for facility in facilities_by_level[level]:
                 dependents = self._find_dependents(facility, facilities, deeper_levels)
-                facility.resiliency_grade = self._calculate_grade_from_dependents(
-                    dependents
-                )
+                facility.resiliency_grade = self._calculate_grade_from_dependents(dependents)
 
     def _find_dependents(
         self,
@@ -165,9 +147,7 @@ class FacilityGenerator(DataGeneratorBase):
         for candidate in all_facilities:
             if candidate.dependency_position.vertical_position not in target_levels:
                 continue
-            if facility.dependency_position.has_shared_group(
-                candidate.dependency_position
-            ):
+            if facility.dependency_position.has_shared_group(candidate.dependency_position):
                 results.append(candidate)
         return results
 
@@ -176,11 +156,7 @@ class FacilityGenerator(DataGeneratorBase):
         if not dependents:
             return self.sample_ufc_resiliency_grade()
 
-        scores = [
-            int(facility.resiliency_grade.value)
-            for facility in dependents
-            if facility.resiliency_grade
-        ]
+        scores = [int(facility.resiliency_grade.value) for facility in dependents if facility.resiliency_grade]
         if not scores:
             return UFCGrade.G1
 

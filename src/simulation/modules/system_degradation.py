@@ -50,24 +50,12 @@ class SystemDegradationModule(SimulationModuleBase):
         if tick_years <= 0:
             return []
 
-        degraded_threshold = float(
-            session.settings.get_value("condition_index_degraded_threshold")
-        )
-        state_multipliers: dict[str, float] = session.settings.get_value(
-            "system_degradation_state_rate_multipliers"
-        )
-        random_annual_chance = float(
-            session.settings.get_value("random_system_degradation_chance")
-        )
-        random_ci_drop = float(
-            session.settings.get_value("random_system_degradation_ci_drop")
-        )
-        random_tick_chance = max(
-            0.0, min(1.0, (random_annual_chance / 100.0) * tick_years)
-        )
-        curve_points = _curve_points_from_setting(
-            session.settings.get_value("system_degradation_age_ratio_rate_curve")
-        )
+        degraded_threshold = float(session.settings.get_value("condition_index_degraded_threshold"))
+        state_multipliers: dict[str, float] = session.settings.get_value("system_degradation_state_rate_multipliers")
+        random_annual_chance = float(session.settings.get_value("random_system_degradation_chance"))
+        random_ci_drop = float(session.settings.get_value("random_system_degradation_ci_drop"))
+        random_tick_chance = max(0.0, min(1.0, (random_annual_chance / 100.0) * tick_years))
+        curve_points = _curve_points_from_setting(session.settings.get_value("system_degradation_age_ratio_rate_curve"))
         events: list[ModuleEvent] = []
 
         for system in session.systems:
@@ -158,9 +146,7 @@ class SystemDegradationModule(SimulationModuleBase):
                 self._clear_tracking(system.id)
             else:
                 self._tracked_states[system.id] = new_state
-                self._remaining_transition_exposure[system.id] = (
-                    self._sample_transition_exposure()
-                )
+                self._remaining_transition_exposure[system.id] = self._sample_transition_exposure()
 
         return ModuleEvent(
             code="system_random_degradation_event",
@@ -208,9 +194,7 @@ class SystemDegradationModule(SimulationModuleBase):
             available_exposure = annual_rate * remaining_years
 
             if available_exposure + _EPSILON < remaining_exposure:
-                self._remaining_transition_exposure[system.id] = (
-                    remaining_exposure - available_exposure
-                )
+                self._remaining_transition_exposure[system.id] = remaining_exposure - available_exposure
                 break
 
             time_to_transition = remaining_exposure / annual_rate
@@ -228,9 +212,7 @@ class SystemDegradationModule(SimulationModuleBase):
             if state == "failed":
                 self._clear_tracking(system.id)
             else:
-                self._remaining_transition_exposure[system.id] = (
-                    self._sample_transition_exposure()
-                )
+                self._remaining_transition_exposure[system.id] = self._sample_transition_exposure()
 
             events.append(
                 ModuleEvent(
@@ -250,9 +232,7 @@ class SystemDegradationModule(SimulationModuleBase):
     # ! HELPERS / UTILS
     # ! ======================================================================================================>
 
-    def _resolve_system_type(
-        self, session: SimulationSession, system: System
-    ) -> SystemType | None:
+    def _resolve_system_type(self, session: SimulationSession, system: System) -> SystemType | None:
         """Resolve reference data for a system from the config-data singleton."""
         if system.system_type_key is None:
             return None
@@ -260,16 +240,11 @@ class SystemDegradationModule(SimulationModuleBase):
 
     def _sync_tracking(self, system_id: str, state: str) -> None:
         """Reset the exposure clock if another process changes the state band."""
-        if (
-            self._tracked_states.get(system_id) == state
-            and system_id in self._remaining_transition_exposure
-        ):
+        if self._tracked_states.get(system_id) == state and system_id in self._remaining_transition_exposure:
             return
 
         self._tracked_states[system_id] = state
-        self._remaining_transition_exposure[system_id] = (
-            self._sample_transition_exposure()
-        )
+        self._remaining_transition_exposure[system_id] = self._sample_transition_exposure()
 
     def _clear_tracking(self, system_id: str) -> None:
         """Forget per-system hazard state when degradation cannot proceed."""
@@ -359,9 +334,7 @@ def _base_transition_rate(
     # separate fault or maintenance modules rather than this background CI drift.
     clamped_ratio = max(curve_points[0][0], min(curve_points[-1][0], age_ratio))
 
-    for (left_ratio, left_rate), (right_ratio, right_rate) in zip(
-        curve_points, curve_points[1:], strict=False
-    ):
+    for (left_ratio, left_rate), (right_ratio, right_rate) in zip(curve_points, curve_points[1:], strict=False):
         if clamped_ratio <= right_ratio:
             span = max(_EPSILON, right_ratio - left_ratio)
             pct = (clamped_ratio - left_ratio) / span
@@ -406,9 +379,7 @@ def _next_state_name(current_state: str) -> str:
     return _STATE_ORDER[min(len(_STATE_ORDER) - 1, index + 1)]
 
 
-def _next_ci_value(
-    current_ci: float, next_state: str, degraded_threshold: float
-) -> float:
+def _next_ci_value(current_ci: float, next_state: str, degraded_threshold: float) -> float:
     """Project a representative CI value for the next condition band."""
     targets = {
         "excellent": 92.5,

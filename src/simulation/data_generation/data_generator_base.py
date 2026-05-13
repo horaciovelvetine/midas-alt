@@ -22,6 +22,7 @@ class DataGeneratorBase:
 
         Args:
             seed: When not ``None``, passed to ``random.seed``.
+
         """
         self.settings: MidasSettings = MidasSettings()
         self.config_data: MidasConfigData = MidasConfigData()
@@ -43,28 +44,18 @@ class DataGeneratorBase:
 
     def sample_ufc_resiliency_grade(self) -> UFCGrade:
         """Sample a UFC resiliency grade (G1-G4); unmapped values use G1."""
-        distribution = self.settings.get_value(
-            "generated_resiliency_grade_distribution"
-        )
+        distribution = self.settings.get_value("generated_resiliency_grade_distribution")
         sampled = distribution.select_random_segment().sample()
         str_key = str(int(sampled)) if isinstance(sampled, float) else str(sampled)
         return UFCGrade.from_value(str_key) or UFCGrade.G1
 
-    def build_system_distribution_context(
-        self, system: System, system_type: SystemType | None = None
-    ) -> DistributionContext:
+    def build_system_distribution_context(self, system: System, system_type: SystemType | None = None) -> DistributionContext:
         """Build ``DistributionContext`` for lifecycle-aware distributions."""
         resolved_system_type = system_type
         if resolved_system_type is None and system.system_type_key is not None:
-            resolved_system_type = self.config_data.get_system_type(
-                system.system_type_key
-            )
+            resolved_system_type = self.config_data.get_system_type(system.system_type_key)
 
-        life_expectancy = (
-            resolved_system_type.life_expectancy
-            if resolved_system_type is not None
-            else None
-        )
+        life_expectancy = resolved_system_type.life_expectancy if resolved_system_type is not None else None
         return DistributionContext(
             age_years=system.age_years,
             life_expectancy_years=life_expectancy,
@@ -84,15 +75,9 @@ class DataGeneratorBase:
     ) -> int:
         """Non-negative integer count: Poisson for ``EventRateDistribution``, else coerced ``sample()``."""
         if isinstance(distribution, EventRateDistribution):
-            return distribution.sample_count(
-                context=context, horizon_years=horizon_years
-            )
+            return distribution.sample_count(context=context, horizon_years=horizon_years)
 
-        sampled = (
-            distribution.sample(context=context)
-            if context is not None
-            else distribution.sample()
-        )
+        sampled = distribution.sample(context=context) if context is not None else distribution.sample()
         try:
             return max(0, int(round(float(sampled))))
         except (TypeError, ValueError):
@@ -100,13 +85,7 @@ class DataGeneratorBase:
 
     def average_condition_index(self, entities: list[object]) -> float | None:
         """Mean of defined ``condition_index`` values on ``entities`` (two decimals)."""
-        values = [
-            float(value)
-            for value in (
-                getattr(entity, "condition_index", None) for entity in entities
-            )
-            if value is not None
-        ]
+        values = [float(value) for value in (getattr(entity, "condition_index", None) for entity in entities) if value is not None]
         if not values:
             return None
         return round(sum(values) / len(values), 2)

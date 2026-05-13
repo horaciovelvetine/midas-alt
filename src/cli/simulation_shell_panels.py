@@ -23,9 +23,7 @@ SYSTEM_MISSION_WO_ALERT_THRESHOLD = 2
 
 console = Console()
 
-_MISSION_ALERT_OPEN_STATUSES = frozenset(
-    {WO_Status.SUBMITTED, WO_Status.APPROVED, WO_Status.IN_PROGRESS}
-)
+_MISSION_ALERT_OPEN_STATUSES = frozenset({WO_Status.SUBMITTED, WO_Status.APPROVED, WO_Status.IN_PROGRESS})
 
 
 @dataclass(frozen=True)
@@ -59,9 +57,7 @@ def build_installation_summary_panel(session: SimulationSession) -> Panel:
     grid.add_row("Systems", str(len(session.systems)))
     grid.add_row(
         "Condition Index",
-        _format_ci_and_status(
-            installation_state.condition_index, installation_state.status_label
-        ),
+        _format_ci_and_status(installation_state.condition_index, installation_state.status_label),
     )
     grid.add_row("Degraded entities", str(condition_summary["degraded"]))
     grid.add_row("Inoperable entities", str(condition_summary["inoperable"]))
@@ -168,17 +164,13 @@ def _format_ci_and_status(condition_index: float | None, status_label: str) -> s
 
 def _facility_title(session: SimulationSession, facility: Facility) -> str:
     """Human-readable facility label from reference data."""
-    facility_type = session.settings.config_data.get_facility_type(
-        facility.facility_type_key or 0
-    )
+    facility_type = session.settings.config_data.get_facility_type(facility.facility_type_key or 0)
     return facility_type.title if facility_type else facility.id
 
 
 def _system_title(session: SimulationSession, system: System) -> str:
     """Human-readable system label from reference data."""
-    system_type = session.settings.config_data.get_system_type(
-        system.system_type_key or 0
-    )
+    system_type = session.settings.config_data.get_system_type(system.system_type_key or 0)
     return system_type.title if system_type else system.id
 
 
@@ -190,9 +182,7 @@ def _open_mission_impacting_work_orders(
     """Open work orders for an entity that count as mission-impacting (matches session rollup logic)."""
     system_ids_under_facility: set[str] | None = None
     if entity_type == EntityType.FACILITY:
-        system_ids_under_facility = {
-            s.id for s in session.systems_by_facility.get(entity_id, [])
-        }
+        system_ids_under_facility = {s.id for s in session.systems_by_facility.get(entity_id, [])}
     selected: list[WorkOrder] = []
     for wo in session.work_orders:
         if wo.status not in _MISSION_ALERT_OPEN_STATUSES:
@@ -202,9 +192,7 @@ def _open_mission_impacting_work_orders(
         if entity_type == EntityType.SYSTEM and wo.system_id == entity_id:
             selected.append(wo)
         elif entity_type == EntityType.FACILITY:
-            if wo.facility_id == entity_id or (
-                wo.system_id and wo.system_id in system_ids_under_facility
-            ):
+            if wo.facility_id == entity_id or (wo.system_id and wo.system_id in system_ids_under_facility):
                 selected.append(wo)
         elif entity_type == EntityType.INSTALLATION and wo.installation_id == entity_id:
             selected.append(wo)
@@ -220,9 +208,7 @@ def _mission_blocked_why_brief(state: EntityRuntimeState) -> str:
     return f"Installation rollup blocked; {state.mission_impacting_open_work_orders} mission open WO(s)"
 
 
-def _mission_blocked_reason_lines(
-    session: SimulationSession, state: EntityRuntimeState
-) -> tuple[str, ...]:
+def _mission_blocked_reason_lines(session: SimulationSession, state: EntityRuntimeState) -> tuple[str, ...]:
     """Explain mission_blocked from session rules (inoperable + mission WOs, with child rollup)."""
     if state.entity_type == EntityType.SYSTEM:
         return (
@@ -232,48 +218,33 @@ def _mission_blocked_reason_lines(
         )
     if state.entity_type == EntityType.FACILITY:
         facility = session.facilities_by_id[state.entity_id]
-        child_states = [
-            session.get_system_state(s.id)
-            for s in session.systems_by_facility.get(facility.id, [])
-        ]
+        child_states = [session.get_system_state(s.id) for s in session.systems_by_facility.get(facility.id, [])]
         n_child_mb = sum(1 for cs in child_states if cs.mission_blocked)
         lines: list[str] = []
         if n_child_mb:
-            lines.append(
-                f"{n_child_mb} child system(s) are already mission blocked; the facility inherits that condition upward."
-            )
+            lines.append(f"{n_child_mb} child system(s) are already mission blocked; the facility inherits that condition upward.")
         inop_fac = state.condition_index is not None and state.condition_index <= 0
         if inop_fac and state.mission_impacting_open_work_orders:
             lines.append(
                 "Facility aggregate CI is inoperable (≤0) while mission-impacting work orders remain open under this facility."
             )
         if not lines:
-            lines.append(
-                "Facility mission blocked is driven by rollup from systems and/or facility-level inoperability."
-            )
-        lines.append(
-            "Rule: mission blocked if any child system is mission blocked, OR (facility inoperable AND mission open WOs)."
-        )
+            lines.append("Facility mission blocked is driven by rollup from systems and/or facility-level inoperability.")
+        lines.append("Rule: mission blocked if any child system is mission blocked, OR (facility inoperable AND mission open WOs).")
         return tuple(lines)
     facility_states = [session.get_facility_state(f.id) for f in session.facilities]
     n_fac_mb = sum(1 for fs in facility_states if fs.mission_blocked)
     lines2: list[str] = []
     if n_fac_mb:
-        lines2.append(
-            f"{n_fac_mb} facility rollup(s) show mission blocked; the installation reflects that cumulative posture."
-        )
+        lines2.append(f"{n_fac_mb} facility rollup(s) show mission blocked; the installation reflects that cumulative posture.")
     inop_inst = state.condition_index is not None and state.condition_index <= 0
     if inop_inst and state.mission_impacting_open_work_orders:
         lines2.append(
             "Installation aggregate CI is inoperable (≤0) with open mission-impacting work orders under this installation."
         )
     if not lines2:
-        lines2.append(
-            "Installation mission blocked aggregates facility and system runtime states."
-        )
-    lines2.append(
-        "Rule: mission blocked if any facility is mission blocked, OR (installation inoperable AND mission open WOs)."
-    )
+        lines2.append("Installation mission blocked aggregates facility and system runtime states.")
+    lines2.append("Rule: mission blocked if any facility is mission blocked, OR (installation inoperable AND mission open WOs).")
     return tuple(lines2)
 
 
@@ -293,7 +264,7 @@ def _build_mission_alert_strip_counts_table(items: list[MissionAlertItem]) -> Ta
 
 
 def _build_mission_alert_rules_panel() -> Panel:
-    """Static explanation of alert kinds and thresholds (browser landing view)."""
+    """Build a static panel explaining alert kinds and thresholds (browser landing view)."""
     body = Text()
     body.append("Critical — Mission blocked\n", style="bold red")
     body.append(
@@ -302,9 +273,7 @@ def _build_mission_alert_rules_panel() -> Panel:
         "also show blocked when a child entity is already mission blocked.\n\n",
         style="dim",
     )
-    body.append(
-        "Warning — High mission-impacting work order load\n", style="bold yellow"
-    )
+    body.append("Warning — High mission-impacting work order load\n", style="bold yellow")
     body.append(
         f"Installation-wide: total open mission-impacting WOs ≥ {INSTALL_MISSION_WO_ALERT_THRESHOLD} while the "
         "installation is not mission blocked (early visibility).\n",
@@ -334,15 +303,13 @@ def _build_mission_alert_browser_snapshot_panel(items: list[MissionAlertItem]) -
 
 
 def _build_mission_alert_browser_table(items: list[MissionAlertItem]) -> Table:
-    """Selectable list with severity, category, and a short 'why' column."""
+    """Build a selectable list of alerts with severity, category, and a short 'why' column."""
     table = Table(title="All alerts", show_header=True, header_style="bold red")
     table.add_column("#", style="cyan", width=3, justify="right")
     table.add_column("Severity", width=8)
     table.add_column("Category", style="yellow", width=14)
     table.add_column("What", style="green", width=32, no_wrap=True, overflow="ellipsis")
-    table.add_column(
-        "Why flagged", style="dim", width=34, no_wrap=True, overflow="ellipsis"
-    )
+    table.add_column("Why flagged", style="dim", width=34, no_wrap=True, overflow="ellipsis")
     kind_labels = {
         "mission_blocked": "Blocked",
         "install_high_wo": "Inst. WO load",
@@ -363,9 +330,7 @@ def _build_mission_alert_browser_table(items: list[MissionAlertItem]) -> Table:
     return table
 
 
-def _mission_alert_work_order_sample_table(
-    wos: list[WorkOrder], *, max_rows: int
-) -> Panel:
+def _mission_alert_work_order_sample_table(wos: list[WorkOrder], *, max_rows: int) -> Panel:
     """Table of sample open mission-impacting work orders for drill-down."""
     if not wos:
         return Panel(
@@ -393,9 +358,7 @@ def _mission_alert_work_order_sample_table(
             title=f"Open mission-impacting WOs (first {max_rows})",
             border_style="magenta",
         )
-    return Panel(
-        tbl, title="Open mission-impacting work orders", border_style="magenta"
-    )
+    return Panel(tbl, title="Open mission-impacting work orders", border_style="magenta")
 
 
 def _print_mission_alert_drilldown(
@@ -421,9 +384,7 @@ def _print_mission_alert_drilldown(
             metrics.add_row("Runtime status", st.status_label)
             metrics.add_row("Condition index", _format_ci(st.condition_index))
             metrics.add_row("Open work orders", str(st.open_work_orders))
-            metrics.add_row(
-                "Mission-impacting (open)", str(st.mission_impacting_open_work_orders)
-            )
+            metrics.add_row("Mission-impacting (open)", str(st.mission_impacting_open_work_orders))
             filled_metrics = True
 
     reasons = Text()
@@ -431,9 +392,7 @@ def _print_mission_alert_drilldown(
     for line in item.reason_lines:
         reasons.append(f"• {line}\n", style="dim")
 
-    narrative = Panel(
-        Text(item.detail, style="red"), title="One-line summary", border_style="red"
-    )
+    narrative = Panel(Text(item.detail, style="red"), title="One-line summary", border_style="red")
     wos = (
         _open_mission_impacting_work_orders(session, item.entity_type, item.entity_id)
         if item.entity_type and item.entity_id
@@ -442,11 +401,7 @@ def _print_mission_alert_drilldown(
     wo_panel = _mission_alert_work_order_sample_table(wos, max_rows=12)
 
     body = Group(
-        (
-            metrics
-            if filled_metrics
-            else Text("[dim]No entity metrics for this alert kind.[/dim]", style="dim")
-        ),
+        (metrics if filled_metrics else Text("[dim]No entity metrics for this alert kind.[/dim]", style="dim")),
         reasons,
         narrative,
         wo_panel,
@@ -460,9 +415,7 @@ def _print_mission_alert_drilldown(
     )
 
 
-def _format_mission_blocked_alert(
-    session: SimulationSession, state: EntityRuntimeState
-) -> str:
+def _format_mission_blocked_alert(session: SimulationSession, state: EntityRuntimeState) -> str:
     """One alert line for a mission-blocked entity."""
     if state.entity_type == EntityType.INSTALLATION:
         name = session.installation.title or session.installation.id
@@ -487,9 +440,7 @@ def _format_mission_blocked_alert(
     )
 
 
-def _mission_blocked_summary_line(
-    session: SimulationSession, state: EntityRuntimeState
-) -> str:
+def _mission_blocked_summary_line(session: SimulationSession, state: EntityRuntimeState) -> str:
     """Short menu label for a mission-blocked entity."""
     if state.entity_type == EntityType.INSTALLATION:
         name = session.installation.title or session.installation.id
@@ -526,11 +477,7 @@ def collect_mission_alert_items(session: SimulationSession) -> list[MissionAlert
         )
 
     inst_state = session.get_installation_state()
-    if (
-        inst_state.mission_impacting_open_work_orders
-        >= INSTALL_MISSION_WO_ALERT_THRESHOLD
-        and not inst_state.mission_blocked
-    ):
+    if inst_state.mission_impacting_open_work_orders >= INSTALL_MISSION_WO_ALERT_THRESHOLD and not inst_state.mission_blocked:
         inst_n = inst_state.mission_impacting_open_work_orders
         items.append(
             MissionAlertItem(
@@ -555,10 +502,7 @@ def collect_mission_alert_items(session: SimulationSession) -> list[MissionAlert
 
     for system in session.systems:
         sstate = session.get_system_state(system.id)
-        if (
-            sstate.mission_impacting_open_work_orders
-            < SYSTEM_MISSION_WO_ALERT_THRESHOLD
-        ):
+        if sstate.mission_impacting_open_work_orders < SYSTEM_MISSION_WO_ALERT_THRESHOLD:
             continue
         if (EntityType.SYSTEM, system.id) in mission_blocked_keys:
             continue
@@ -600,9 +544,7 @@ def _mission_alert_summary_phrase(items: list[MissionAlertItem]) -> str:
     if inst:
         parts.append("1 installation-wide high mission-impacting work order load")
     if sys_n:
-        parts.append(
-            f"{sys_n} system{'s' if sys_n != 1 else ''} over the per-system mission WO threshold"
-        )
+        parts.append(f"{sys_n} system{'s' if sys_n != 1 else ''} over the per-system mission WO threshold")
     return "Active mission impact: " + "; ".join(parts) + "."
 
 
@@ -611,9 +553,7 @@ def prompt_mission_alert_browser(session: SimulationSession) -> None:
     while True:
         items = collect_mission_alert_items(session)
         if not items:
-            DisplayHelper.print_info(
-                "There are no active mission alerts.", title="Mission alerts"
-            )
+            DisplayHelper.print_info("There are no active mission alerts.", title="Mission alerts")
             InputHelper.wait_for_continue()
             return
 
@@ -682,9 +622,7 @@ def build_installation_details(session: SimulationSession):
     detail.add_row("Region", installation.region or "N/A")
     detail.add_row("Facilities", str(len(session.facilities)))
     detail.add_row("Systems", str(len(session.systems)))
-    detail.add_row(
-        "Condition", _format_ci_and_status(state.condition_index, state.status_label)
-    )
+    detail.add_row("Condition", _format_ci_and_status(state.condition_index, state.status_label))
     detail.add_row("Focused", "None")
     detail.add_row(
         "How To Inspect",
@@ -696,9 +634,7 @@ def build_installation_details(session: SimulationSession):
 def build_facility_details(session: SimulationSession, facility: Facility):
     """Create the inspection view for a focused facility."""
     state = session.get_facility_state(facility.id)
-    facility_type = session.settings.config_data.get_facility_type(
-        facility.facility_type_key or 0
-    )
+    facility_type = session.settings.config_data.get_facility_type(facility.facility_type_key or 0)
     systems = session.systems_by_facility.get(facility.id, [])
 
     detail = Table.grid(padding=(0, 1))
@@ -714,9 +650,7 @@ def build_facility_details(session: SimulationSession, facility: Facility):
         "Age",
         f"{facility.age_years} years" if facility.age_years is not None else "N/A",
     )
-    detail.add_row(
-        "Condition", _format_ci_and_status(state.condition_index, state.status_label)
-    )
+    detail.add_row("Condition", _format_ci_and_status(state.condition_index, state.status_label))
     detail.add_row("Systems", str(len(systems)))
     detail.add_row("Open Work Orders", str(state.open_work_orders))
     detail.add_row("Mission Work Orders", str(state.mission_impacting_open_work_orders))
@@ -732,27 +666,19 @@ def build_facility_details(session: SimulationSession, facility: Facility):
 def build_system_details(session: SimulationSession, system: System):
     """Create the inspection view for a focused system."""
     state = session.get_system_state(system.id)
-    system_type = session.settings.config_data.get_system_type(
-        system.system_type_key or 0
-    )
+    system_type = session.settings.config_data.get_system_type(system.system_type_key or 0)
 
     detail = Table.grid(padding=(0, 1))
     detail.add_column(style="cyan")
     detail.add_column(style="green")
     detail.add_row("Title", system_type.title if system_type else system.id)
-    detail.add_row(
-        "Age", f"{system.age_years} years" if system.age_years is not None else "N/A"
-    )
-    detail.add_row(
-        "Condition", _format_ci_and_status(state.condition_index, state.status_label)
-    )
+    detail.add_row("Age", f"{system.age_years} years" if system.age_years is not None else "N/A")
+    detail.add_row("Condition", _format_ci_and_status(state.condition_index, state.status_label))
     detail.add_row("Open Work Orders", str(state.open_work_orders))
     detail.add_row("Mission Work Orders", str(state.mission_impacting_open_work_orders))
 
     if system.work_orders:
-        detail.add_row(
-            "Work Order Statuses", ", ".join(_work_order_status_labels(system))
-        )
+        detail.add_row("Work Order Statuses", ", ".join(_work_order_status_labels(system)))
     else:
         detail.add_row("Work Order Statuses", "None")
     detail.add_row(
@@ -768,9 +694,7 @@ def build_controls_panel() -> Panel:
     overview.append("Use these keys while the simulation is open. Press ")
     overview.append("h", style="bold dim")
     overview.append(" at any time to hide or show this help.\n")
-    overview.append(
-        "Mission alerts: the red strip shows a sentence plus category counts and thresholds. Press "
-    )
+    overview.append("Mission alerts: the red strip shows a sentence plus category counts and thresholds. Press ")
     overview.append("a", style="bold dim")
     overview.append(
         " to pause and open the mission-impact view: how alerts work, a snapshot, a table with "
@@ -784,16 +708,10 @@ def build_controls_panel() -> Panel:
     table.add_column("Action", style="cyan", width=22)
     table.add_column("Instruction", style="green")
 
-    table.add_row(
-        "space / p", "Pause or resume", "Toggle the simulation clock on or off."
-    )
+    table.add_row("space / p", "Pause or resume", "Toggle the simulation clock on or off.")
     table.add_row("n", "Single-step", "Advance exactly one tick and then pause again.")
-    table.add_row(
-        "t", "Change tick size", "Cycle through day, week, month, and year ticks."
-    )
-    table.add_row(
-        "+ or ]", "Speed up", "Reduce the delay between ticks so time passes faster."
-    )
+    table.add_row("t", "Change tick size", "Cycle through day, week, month, and year ticks.")
+    table.add_row("+ or ]", "Speed up", "Reduce the delay between ticks so time passes faster.")
     table.add_row(
         "- or [",
         "Slow down",
@@ -838,8 +756,7 @@ def build_dependency_tree(session: SimulationSession, show_systems: bool) -> Tre
     installation_state = session.get_installation_state()
     title = session.installation.title or session.installation.id
     root_label = (
-        f"[bold cyan]{title}[/bold cyan] "
-        f"(CI { _format_ci(installation_state.condition_index) }, {installation_state.status_label})"
+        f"[bold cyan]{title}[/bold cyan] (CI {_format_ci(installation_state.condition_index)}, {installation_state.status_label})"
     )
     root = Tree(root_label)
     parent_map = build_dependency_parent_map(session.facilities)
@@ -848,9 +765,7 @@ def build_dependency_tree(session: SimulationSession, show_systems: bool) -> Tre
         children_by_parent[parent_map.get(facility.id)].append(facility)
 
     def add_children(parent_node: Tree, parent_id: str | None) -> None:
-        for facility in sorted(
-            children_by_parent.get(parent_id, []), key=_facility_sort_key
-        ):
+        for facility in sorted(children_by_parent.get(parent_id, []), key=_facility_sort_key):
             facility_state = session.get_facility_state(facility.id)
             facility_node = parent_node.add(
                 _format_facility_label(
@@ -860,9 +775,7 @@ def build_dependency_tree(session: SimulationSession, show_systems: bool) -> Tre
                     selected=session.selected_facility_id == facility.id,
                 )
             )
-            should_show_systems = (
-                show_systems or session.selected_facility_id == facility.id
-            )
+            should_show_systems = show_systems or session.selected_facility_id == facility.id
             if should_show_systems:
                 for system in session.systems_by_facility.get(facility.id, []):
                     facility_node.add(
@@ -892,15 +805,10 @@ def build_dependency_parent_map(facilities: list[Facility]) -> dict[str, str | N
                 continue
             if not candidate.dependency_position.is_above(facility.dependency_position):
                 continue
-            if not candidate.dependency_position.has_shared_group(
-                facility.dependency_position
-            ):
+            if not candidate.dependency_position.has_shared_group(facility.dependency_position):
                 continue
 
-            shared_groups = len(
-                set(candidate.dependency_position.group_ids)
-                & set(facility.dependency_position.group_ids)
-            )
+            shared_groups = len(set(candidate.dependency_position.group_ids) & set(facility.dependency_position.group_ids))
             candidate_score = (
                 candidate.dependency_position.depth,
                 shared_groups,
@@ -922,12 +830,8 @@ def _build_facility_inspect_table(session: SimulationSession) -> Table:
     table.add_column("Dependency", style="yellow")
     table.add_column("CI", style="magenta", justify="right")
     table.add_column("Status", style="white")
-    for index, facility in enumerate(
-        sorted(session.facilities, key=_facility_sort_key), start=1
-    ):
-        facility_type = session.settings.config_data.get_facility_type(
-            facility.facility_type_key or 0
-        )
+    for index, facility in enumerate(sorted(session.facilities, key=_facility_sort_key), start=1):
+        facility_type = session.settings.config_data.get_facility_type(facility.facility_type_key or 0)
         runtime = session.get_facility_state(facility.id)
         table.add_row(
             str(index),
@@ -958,9 +862,7 @@ def prompt_for_focus_selection(session: SimulationSession) -> None:
             "[bold dim]c[/bold dim] = clear focus, "
             "[bold dim]b[/bold dim] = back to simulation[/dim]"
         )
-        raw = InputHelper.get_input_with_backspace(
-            "Inspect", default="", allow_empty=False
-        )
+        raw = InputHelper.get_input_with_backspace("Inspect", default="", allow_empty=False)
         if raw is None:
             return
         key = raw.strip().lower()
@@ -978,9 +880,7 @@ def prompt_for_focus_selection(session: SimulationSession) -> None:
             console.print(f"[red]Invalid choice. Use 1-{n_fac}, s, c, or b.[/red]\n")
             continue
         if choice < 1 or choice > n_fac:
-            console.print(
-                f"[red]Facility number must be between 1 and {n_fac}.[/red]\n"
-            )
+            console.print(f"[red]Facility number must be between 1 and {n_fac}.[/red]\n")
             continue
         session.set_selected_facility(sorted_facilities[choice - 1].id)
         return
@@ -995,13 +895,10 @@ def _prompt_for_system_selection(session: SimulationSession) -> None:
 
     sorted_facilities = sorted(session.facilities, key=_facility_sort_key)
     orphan_systems = [
-        system
-        for system in session.systems
-        if not system.facility_id or system.facility_id not in session.facilities_by_id
+        system for system in session.systems if not system.facility_id or system.facility_id not in session.facilities_by_id
     ]
     groups: list[tuple[Facility | None, list[System]]] = [
-        (facility, session.systems_by_facility.get(facility.id, []))
-        for facility in sorted_facilities
+        (facility, session.systems_by_facility.get(facility.id, [])) for facility in sorted_facilities
     ]
     if orphan_systems:
         groups.append((None, orphan_systems))
@@ -1018,9 +915,7 @@ def _prompt_for_system_selection(session: SimulationSession) -> None:
     fac_table.add_column("Status", style="white")
     for index, (facility, systems) in enumerate(groups, start=1):
         if facility is None:
-            fac_table.add_row(
-                str(index), "Unassigned", "—", "—", f"{len(systems)} system(s)"
-            )
+            fac_table.add_row(str(index), "Unassigned", "—", "—", f"{len(systems)} system(s)")
         else:
             runtime = session.get_facility_state(facility.id)
             fac_table.add_row(
@@ -1031,9 +926,7 @@ def _prompt_for_system_selection(session: SimulationSession) -> None:
                 runtime.status_label,
             )
     DisplayHelper.print_table(fac_table)
-    console.print(
-        "[dim]Enter [bold dim]b[/bold dim] to return to the simulation without selecting.[/dim]"
-    )
+    console.print("[dim]Enter [bold dim]b[/bold dim] to return to the simulation without selecting.[/dim]")
 
     fac_pick = InputHelper.ask_number(
         f"Select facility group 1-{len(groups)} (or b)",
@@ -1065,9 +958,7 @@ def _prompt_for_system_selection(session: SimulationSession) -> None:
             str(s_runtime.mission_impacting_open_work_orders),
         )
     DisplayHelper.print_table(sys_table)
-    console.print(
-        "[dim]Enter [bold dim]b[/bold dim] to return to the simulation without selecting.[/dim]"
-    )
+    console.print("[dim]Enter [bold dim]b[/bold dim] to return to the simulation without selecting.[/dim]")
 
     sys_pick = InputHelper.ask_number(
         f"Select system 1-{len(group_systems)} (or b)",
@@ -1077,9 +968,7 @@ def _prompt_for_system_selection(session: SimulationSession) -> None:
     )
     if sys_pick is None:
         return
-    session.set_selected_system(
-        sorted(group_systems, key=lambda s: s.id)[sys_pick - 1].id
-    )
+    session.set_selected_system(sorted(group_systems, key=lambda s: s.id)[sys_pick - 1].id)
 
 
 def _format_facility_label(
@@ -1089,13 +978,10 @@ def _format_facility_label(
     selected: bool,
 ) -> str:
     """Format a facility label for the dependency tree."""
-    facility_type = session.settings.config_data.get_facility_type(
-        facility.facility_type_key or 0
-    )
+    facility_type = session.settings.config_data.get_facility_type(facility.facility_type_key or 0)
     title = facility_type.title if facility_type else facility.id
     label = (
-        f"{title} [{facility.dependency_position}] "
-        f"(CI {_format_ci(runtime_state.condition_index)}, {runtime_state.status_label})"
+        f"{title} [{facility.dependency_position}] (CI {_format_ci(runtime_state.condition_index)}, {runtime_state.status_label})"
     )
     if selected:
         return f"[bold yellow]{label}[/bold yellow]"
@@ -1109,9 +995,7 @@ def _format_system_label(
     selected: bool,
 ) -> str:
     """Format a system label for the dependency tree."""
-    system_type = session.settings.config_data.get_system_type(
-        system.system_type_key or 0
-    )
+    system_type = session.settings.config_data.get_system_type(system.system_type_key or 0)
     title = system_type.title if system_type else system.id
     label = f"{title} (CI {_format_ci(runtime_state.condition_index)}, {runtime_state.status_label})"
     if selected:
@@ -1136,7 +1020,4 @@ def _format_ci(value: float | None) -> str:
 
 def _work_order_status_labels(system: System) -> list[str]:
     """Return work-order statuses for a system as simple labels."""
-    return [
-        work_order.status.value if work_order.status else "Unknown"
-        for work_order in system.work_orders
-    ]
+    return [work_order.status.value if work_order.status else "Unknown" for work_order in system.work_orders]

@@ -47,9 +47,7 @@ console = Console()
 class SimulationShell:
     """Run an interactive dashboard over a single simulation session."""
 
-    def __init__(
-        self, session: SimulationSession, shell_console: Console | None = None
-    ) -> None:
+    def __init__(self, session: SimulationSession, shell_console: Console | None = None) -> None:
         """Store shell state for an active simulation session."""
         self.session = session
         self.console = shell_console or console
@@ -70,11 +68,7 @@ class SimulationShell:
             with _TerminalKeyReader() as key_reader:
                 try:
                     while not self._should_exit:
-                        timeout = (
-                            self.session.playback_delay_seconds
-                            if not self.session.paused
-                            else 0.1
-                        )
+                        timeout = self.session.playback_delay_seconds if not self.session.paused else 0.1
                         key = key_reader.poll(timeout=timeout)
                         if key is not None:
                             self._handle_keypress(key, live=live, key_reader=key_reader)
@@ -135,9 +129,7 @@ class SimulationShell:
             renderables.append(build_controls_panel())
         return Group(*renderables)
 
-    def _handle_keypress(
-        self, key: str, live: Live, key_reader: _TerminalKeyReader
-    ) -> None:
+    def _handle_keypress(self, key: str, live: Live, key_reader: _TerminalKeyReader) -> None:
         """Interpret a single-key shell command."""
         if key in {"\x03", "q", "Q"}:
             self._should_exit = True
@@ -187,9 +179,7 @@ class SimulationShell:
             return
 
     @contextmanager
-    def _suspended_live(
-        self, live: Live, key_reader: _TerminalKeyReader
-    ) -> Iterator[None]:
+    def _suspended_live(self, live: Live, key_reader: _TerminalKeyReader) -> Iterator[None]:
         """Temporarily stop live rendering so prompt-based input can run cleanly."""
         live.stop()
         key_reader.disable()
@@ -229,12 +219,7 @@ class _TerminalKeyReader:
 
     def disable(self) -> None:
         """Restore stdin settings after raw reads."""
-        if (
-            not self._enabled
-            or self._fd is None
-            or self._original_settings is None
-            or termios is None
-        ):
+        if not self._enabled or self._fd is None or self._original_settings is None or termios is None:
             return
         termios.tcsetattr(self._fd, termios.TCSADRAIN, self._original_settings)
         self._enabled = False

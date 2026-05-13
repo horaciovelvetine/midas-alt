@@ -10,7 +10,7 @@ from ...enums.work_order import WO_Priority, WO_Status
 from .base import ModuleEvent, SimulationModuleBase
 
 if TYPE_CHECKING:
-    from ...models import WorkOrder, System
+    from ...models import System, WorkOrder
     from ..runtime.session import SimulationSession
 
 
@@ -57,9 +57,7 @@ class WorkOrderProgressionModule(SimulationModuleBase):
 
         return events
 
-    def _advance_work_order_status(
-        self, wo: WorkOrder, session: SimulationSession
-    ) -> WO_Status:
+    def _advance_work_order_status(self, wo: WorkOrder, session: SimulationSession) -> WO_Status:
         """Determine next status for a work order based on priority and age."""
         age_ticks = self._work_order_ages.get(wo.id, 0)
 
@@ -98,9 +96,7 @@ class WorkOrderProgressionModule(SimulationModuleBase):
 
         return wo.status
 
-    def _repair_system(
-        self, wo: WorkOrder, session: SimulationSession
-    ) -> ModuleEvent | None:
+    def _repair_system(self, wo: WorkOrder, session: SimulationSession) -> ModuleEvent | None:
         """Repair system when work order completes."""
         system = self._find_system_for_work_order(wo, session)
         if not system or system.condition_index is None:
@@ -109,9 +105,7 @@ class WorkOrderProgressionModule(SimulationModuleBase):
         repair_amount = self._calculate_repair_amount(wo)
 
         old_ci = system.condition_index
-        system.condition_index = min(
-            100.0, round(system.condition_index + repair_amount, 2)
-        )
+        system.condition_index = min(100.0, round(system.condition_index + repair_amount, 2))
 
         return ModuleEvent(
             code="system_repaired",
@@ -123,9 +117,7 @@ class WorkOrderProgressionModule(SimulationModuleBase):
             entity_type=EntityType.SYSTEM,
         )
 
-    def _find_system_for_work_order(
-        self, wo: WorkOrder, session: SimulationSession
-    ) -> System | None:
+    def _find_system_for_work_order(self, wo: WorkOrder, session: SimulationSession) -> System | None:
         """Find the system associated with a work order."""
         if wo.system_id:
             return next((s for s in session.systems if s.id == wo.system_id), None)

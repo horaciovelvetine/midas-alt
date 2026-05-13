@@ -69,13 +69,9 @@ def _display_selection_summary(selections: dict) -> None:
     else:
         method = selections.get("generation_method", "")
         if method in ["installations", "facilities"]:
-            table.add_row(
-                "Target Count", "[yellow]Required but not set[/yellow]", style="default"
-            )
+            table.add_row("Target Count", "[yellow]Required but not set[/yellow]", style="default")
         else:
-            table.add_row(
-                "Target Count", "[dim]N/A (using default method)[/dim]", style="default"
-            )
+            table.add_row("Target Count", "[dim]N/A (using default method)[/dim]", style="default")
 
     table.add_section()
 
@@ -101,25 +97,15 @@ def _display_selection_summary(selections: dict) -> None:
 
 def _format_facility(facility: Facility, settings: MidasSettings) -> str:
     """Format a facility for display."""
-    facility_type = _get_config_data().get_facility_type(
-        facility.facility_type_key or 0
-    )
-    title = (
-        facility_type.title
-        if facility_type
-        else f"Facility {facility.facility_type_key}"
-    )
+    facility_type = _get_config_data().get_facility_type(facility.facility_type_key or 0)
+    title = facility_type.title if facility_type else f"Facility {facility.facility_type_key}"
 
     lines = [
         f"ID: {facility.id}",
         f"Type: {title} (Key: {facility.facility_type_key})",
         f"Year Constructed: {facility.year_constructed}",
         f"Age: {facility.age_years} years",
-        (
-            f"Condition Index: {facility.condition_index:.2f}"
-            if facility.condition_index
-            else "Condition Index: N/A"
-        ),
+        (f"Condition Index: {facility.condition_index:.2f}" if facility.condition_index else "Condition Index: N/A"),
         f"Dependency Chain: {facility.dependency_position}",
         f"Resiliency Grade: {facility.resiliency_grade.value if facility.resiliency_grade else 'N/A'}",
         f"Systems: {len(facility.system_ids)}",
@@ -137,19 +123,13 @@ def _format_system(system: System, settings: MidasSettings) -> str:
         f"Type: {title} (Key: {system.system_type_key})",
         f"Year Constructed: {system.year_constructed}",
         f"Age: {system.age_years} years",
-        (
-            f"Condition Index: {system.condition_index:.2f}"
-            if system.condition_index
-            else "Condition Index: N/A"
-        ),
+        (f"Condition Index: {system.condition_index:.2f}" if system.condition_index else "Condition Index: N/A"),
         f"Work Orders: {len(system.work_orders)}",
     ]
     return "\n".join(lines)
 
 
-def _work_orders_for_system(
-    system: System, flat_work_orders: list[WorkOrder]
-) -> list[WorkOrder]:
+def _work_orders_for_system(system: System, flat_work_orders: list[WorkOrder]) -> list[WorkOrder]:
     """Return work orders for a system, preferring embedded records then flat data-store rows."""
     if system.work_orders:
         return list(system.work_orders)
@@ -178,11 +158,7 @@ def _format_installation(installation: Installation, facilities: list[Facility])
     lines = [
         f"ID: {installation.id}",
         f"Title: {installation.title}",
-        (
-            f"Condition Index: {installation.condition_index:.2f}"
-            if installation.condition_index
-            else "Condition Index: N/A"
-        ),
+        (f"Condition Index: {installation.condition_index:.2f}" if installation.condition_index else "Condition Index: N/A"),
         f"Facilities: {len(facilities)}",
     ]
     return "\n".join(lines)
@@ -198,29 +174,21 @@ def _build_installation_selection_rows(
     facility_counts: dict[str, int] = {}
     system_counts: dict[str, int] = {}
     work_order_counts: dict[str, int] = {}
-    facility_to_installation = {
-        facility.id: facility.installation_id for facility in facilities
-    }
+    facility_to_installation = {facility.id: facility.installation_id for facility in facilities}
     system_to_installation = {}
 
     for facility in facilities:
         if facility.installation_id:
-            facility_counts[facility.installation_id] = (
-                facility_counts.get(facility.installation_id, 0) + 1
-            )
+            facility_counts[facility.installation_id] = facility_counts.get(facility.installation_id, 0) + 1
     for system in systems:
         installation_id = facility_to_installation.get(system.facility_id)
         if installation_id:
             system_to_installation[system.id] = installation_id
             system_counts[installation_id] = system_counts.get(installation_id, 0) + 1
     for work_order in work_orders:
-        installation_id = work_order.installation_id or system_to_installation.get(
-            work_order.system_id or ""
-        )
+        installation_id = work_order.installation_id or system_to_installation.get(work_order.system_id or "")
         if installation_id:
-            work_order_counts[installation_id] = (
-                work_order_counts.get(installation_id, 0) + 1
-            )
+            work_order_counts[installation_id] = work_order_counts.get(installation_id, 0) + 1
 
     rows = []
     for installation in installations:
@@ -229,11 +197,7 @@ def _build_installation_selection_rows(
                 "id": installation.id,
                 "title": installation.title or installation.id,
                 "location": installation.location or "N/A",
-                "condition_index": (
-                    f"{installation.condition_index:.2f}"
-                    if installation.condition_index is not None
-                    else "N/A"
-                ),
+                "condition_index": (f"{installation.condition_index:.2f}" if installation.condition_index is not None else "N/A"),
                 "facilities": str(facility_counts.get(installation.id, 0)),
                 "systems": str(system_counts.get(installation.id, 0)),
                 "work_orders": str(work_order_counts.get(installation.id, 0)),
@@ -330,9 +294,7 @@ def handle_run_time_simulation() -> None:
         if result is None:
             return
         if not result.installations:
-            DisplayHelper.print_warning(
-                "No installations were available for simulation."
-            )
+            DisplayHelper.print_warning("No installations were available for simulation.")
             InputHelper.wait_for_continue()
             return
 
@@ -359,9 +321,7 @@ def handle_run_time_simulation() -> None:
         logger.exception("Simulation CLI input error")
         InputHelper.wait_for_continue()
     except Exception as exc:  # pragma: no cover - defensive user-facing handler
-        DisplayHelper.print_error(
-            f"Error running simulation: {exc}", title="Simulation Error"
-        )
+        DisplayHelper.print_error(f"Error running simulation: {exc}", title="Simulation Error")
         logger.exception("Unexpected error running simulation")
         InputHelper.wait_for_continue()
 
@@ -406,9 +366,7 @@ def handle_view_simulated_data_examples() -> None:
         DisplayHelper.clear_screen()
 
         if current_level == "installation":
-            console.print(
-                "\n[bold cyan]Navigation:[/bold cyan] [green]Installation[/green]\n"
-            )
+            console.print("\n[bold cyan]Navigation:[/bold cyan] [green]Installation[/green]\n")
             DisplayHelper.print_panel(
                 content=_format_installation(installation, facilities),
                 title="Installation Overview",
@@ -420,9 +378,7 @@ def handle_view_simulated_data_examples() -> None:
                 break
 
             # Show facilities list
-            facilities_table = Table(
-                title="Available Facilities", show_header=True, header_style="bold cyan"
-            )
+            facilities_table = Table(title="Available Facilities", show_header=True, header_style="bold cyan")
             facilities_table.add_column("#", style="cyan", width=4)
             facilities_table.add_column("Title", style="green")
             facilities_table.add_column("Key", style="yellow", justify="center")
@@ -431,20 +387,12 @@ def handle_view_simulated_data_examples() -> None:
             facilities_table.add_column("WOs", style="green", justify="center")
 
             for idx, facility in enumerate(facilities, start=1):
-                facility_type = _get_config_data().get_facility_type(
-                    facility.facility_type_key or 0
-                )
+                facility_type = _get_config_data().get_facility_type(facility.facility_type_key or 0)
                 title = facility_type.title if facility_type else f"Facility {idx}"
-                ci = (
-                    f"{facility.condition_index:.1f}"
-                    if facility.condition_index
-                    else "N/A"
-                )
+                ci = f"{facility.condition_index:.1f}" if facility.condition_index else "N/A"
                 fac_systems = systems_by_facility.get(facility.id, [])
                 system_count = len(fac_systems)
-                wo_count = sum(
-                    len(work_orders_by_system.get(s.id, [])) for s in fac_systems
-                )
+                wo_count = sum(len(work_orders_by_system.get(s.id, [])) for s in fac_systems)
                 facilities_table.add_row(
                     str(idx),
                     title,
@@ -461,11 +409,7 @@ def handle_view_simulated_data_examples() -> None:
                 allow_empty=True,
             )
 
-            if (
-                choice is None
-                or NavigationHelper.should_quit_to_menu(choice)
-                or choice == ""
-            ):
+            if choice is None or NavigationHelper.should_quit_to_menu(choice) or choice == "":
                 break
             if NavigationHelper.can_go_back(choice):
                 break
@@ -476,22 +420,16 @@ def handle_view_simulated_data_examples() -> None:
                     current_facility = facilities[idx]
                     current_level = "facility"
                 else:
-                    DisplayHelper.print_error(
-                        f"Invalid selection. Please enter 1-{len(facilities)}."
-                    )
+                    DisplayHelper.print_error(f"Invalid selection. Please enter 1-{len(facilities)}.")
                     InputHelper.wait_for_continue()
             except ValueError:
                 DisplayHelper.print_error("Invalid input. Please enter a number.")
                 InputHelper.wait_for_continue()
 
         elif current_level == "facility":
-            console.print(
-                "\n[bold cyan]Navigation:[/bold cyan] [green]Installation[/green] > [yellow]Facility[/yellow]\n"
-            )
+            console.print("\n[bold cyan]Navigation:[/bold cyan] [green]Installation[/green] > [yellow]Facility[/yellow]\n")
 
-            facility_type = _get_config_data().get_facility_type(
-                current_facility.facility_type_key or 0
-            )
+            facility_type = _get_config_data().get_facility_type(current_facility.facility_type_key or 0)
             title = facility_type.title if facility_type else "Unknown Facility"
 
             DisplayHelper.print_panel(
@@ -515,9 +453,7 @@ def handle_view_simulated_data_examples() -> None:
                 continue
 
             # Show systems list
-            systems_table = Table(
-                title="Available Systems", show_header=True, header_style="bold cyan"
-            )
+            systems_table = Table(title="Available Systems", show_header=True, header_style="bold cyan")
             systems_table.add_column("#", style="cyan", width=4)
             systems_table.add_column("Title", style="green")
             systems_table.add_column("Key", style="yellow", justify="center")
@@ -526,18 +462,12 @@ def handle_view_simulated_data_examples() -> None:
             systems_table.add_column("WOs", style="green", justify="center")
 
             for idx, system in enumerate(facility_systems, start=1):
-                system_type = _get_config_data().get_system_type(
-                    system.system_type_key or 0
-                )
+                system_type = _get_config_data().get_system_type(system.system_type_key or 0)
                 title = system_type.title if system_type else f"System {idx}"
-                ci = (
-                    f"{system.condition_index:.1f}" if system.condition_index else "N/A"
-                )
+                ci = f"{system.condition_index:.1f}" if system.condition_index else "N/A"
                 age = f"{system.age_years}y" if system.age_years else "N/A"
                 wo_count = len(work_orders_by_system.get(system.id, []))
-                systems_table.add_row(
-                    str(idx), title, str(system.system_type_key), ci, age, str(wo_count)
-                )
+                systems_table.add_row(str(idx), title, str(system.system_type_key), ci, age, str(wo_count))
 
             DisplayHelper.print_table(systems_table)
 
@@ -561,9 +491,7 @@ def handle_view_simulated_data_examples() -> None:
                     current_system = facility_systems[idx]
                     current_level = "system"
                 else:
-                    DisplayHelper.print_error(
-                        f"Invalid selection. Please enter 1-{len(facility_systems)}."
-                    )
+                    DisplayHelper.print_error(f"Invalid selection. Please enter 1-{len(facility_systems)}.")
                     InputHelper.wait_for_continue()
             except ValueError:
                 DisplayHelper.print_error("Invalid input. Please enter a number.")
@@ -575,9 +503,7 @@ def handle_view_simulated_data_examples() -> None:
                 "[yellow]Facility[/yellow] > [magenta]System[/magenta]\n"
             )
 
-            system_type = _get_config_data().get_system_type(
-                current_system.system_type_key or 0
-            )
+            system_type = _get_config_data().get_system_type(current_system.system_type_key or 0)
             title = system_type.title if system_type else "Unknown System"
 
             DisplayHelper.print_panel(
@@ -587,9 +513,7 @@ def handle_view_simulated_data_examples() -> None:
             related_work_orders = _work_orders_for_system(current_system, work_orders)
 
             if related_work_orders:
-                wo_table = Table(
-                    title="Work Orders", show_header=True, header_style="bold cyan"
-                )
+                wo_table = Table(title="Work Orders", show_header=True, header_style="bold cyan")
                 wo_table.add_column("#", style="cyan", width=4)
                 wo_table.add_column("Status", style="green")
                 wo_table.add_column("Priority", style="yellow")
@@ -699,13 +623,9 @@ def handle_generate_data() -> None:
                 "generated_data, my_simulation, test_run_2024",
             )
             prompt = f"[{step + 1}/{total_steps}] Enter file name (current: {current_value}, b back / q cancel):"
-            value = InputHelper.get_input_with_backspace(
-                prompt, default=current_value, allow_empty=False
-            )
+            value = InputHelper.get_input_with_backspace(prompt, default=current_value, allow_empty=False)
 
-            if NavigationHelper.should_quit_to_menu(
-                value
-            ) or NavigationHelper.can_go_back(value):
+            if NavigationHelper.should_quit_to_menu(value) or NavigationHelper.can_go_back(value):
                 return
 
             selections["file_name"] = value if value else defaults["file_name"]
@@ -719,9 +639,7 @@ def handle_generate_data() -> None:
                 "csv, xlsx",
             )
             prompt = f"[{step + 1}/{total_steps}] Enter format (csv/xlsx) (current: {current_value}, b back / q cancel):"
-            value = InputHelper.get_input_with_backspace(
-                prompt, default=current_value, allow_empty=False
-            )
+            value = InputHelper.get_input_with_backspace(prompt, default=current_value, allow_empty=False)
 
             if NavigationHelper.should_quit_to_menu(value):
                 DisplayHelper.print_warning("Cancelled. Returning to menu.")
@@ -740,18 +658,14 @@ def handle_generate_data() -> None:
             step += 1
 
         elif step == 2:  # Output directory
-            current_value = (
-                selections["output_directory"] or defaults["output_directory"]
-            )
+            current_value = selections["output_directory"] or defaults["output_directory"]
             NavigationHelper.show_help(
                 "Output Directory",
                 "Directory where output will be saved.",
                 ". (current directory), ./output, /path/to/output",
             )
             prompt = f"[{step + 1}/{total_steps}] Enter output directory (current: {current_value}, b back / q cancel):"
-            value = InputHelper.get_input_with_backspace(
-                prompt, default=current_value, allow_empty=False
-            )
+            value = InputHelper.get_input_with_backspace(prompt, default=current_value, allow_empty=False)
 
             if NavigationHelper.should_quit_to_menu(value):
                 DisplayHelper.print_warning("Cancelled. Returning to menu.")
@@ -774,9 +688,7 @@ def handle_generate_data() -> None:
             step += 1
 
         elif step == 3:  # Generation method
-            current_value = (
-                selections["generation_method"] or defaults["generation_method"]
-            )
+            current_value = selections["generation_method"] or defaults["generation_method"]
             NavigationHelper.show_help(
                 "Generation Method",
                 "Method for generating simulated data.\n"
@@ -786,10 +698,11 @@ def handle_generate_data() -> None:
                 "Exports always include maintenance work orders (table/sheet or denormalized rows).",
                 "default, installations, facilities",
             )
-            prompt = f"[{step + 1}/{total_steps}] Method (installations/facilities/default) (current: {current_value}, b back / q cancel):"
-            value = InputHelper.get_input_with_backspace(
-                prompt, default=current_value, allow_empty=False
+            prompt = (
+                f"[{step + 1}/{total_steps}] Method (installations/facilities/default) "
+                f"(current: {current_value}, b back / q cancel):"
             )
+            value = InputHelper.get_input_with_backspace(prompt, default=current_value, allow_empty=False)
 
             if NavigationHelper.should_quit_to_menu(value):
                 DisplayHelper.print_warning("Cancelled. Returning to menu.")
@@ -800,15 +713,11 @@ def handle_generate_data() -> None:
 
             value = value.lower().strip()
             if value and value not in ["installations", "facilities", "default"]:
-                DisplayHelper.print_error(
-                    "Invalid method. Must be installations, facilities, or default."
-                )
+                DisplayHelper.print_error("Invalid method. Must be installations, facilities, or default.")
                 InputHelper.wait_for_continue()
                 continue
 
-            selections["generation_method"] = (
-                value if value else defaults["generation_method"]
-            )
+            selections["generation_method"] = value if value else defaults["generation_method"]
 
             if selections["generation_method"] in ["installations", "facilities"]:
                 step += 1
@@ -821,9 +730,7 @@ def handle_generate_data() -> None:
                 step += 1
                 continue
 
-            current_value = (
-                str(selections["target_count"]) if selections["target_count"] else "10"
-            )
+            current_value = str(selections["target_count"]) if selections["target_count"] else "10"
             method_name = selections["generation_method"]
             NavigationHelper.show_help(
                 f"Target Count ({method_name.title()})",
@@ -834,9 +741,7 @@ def handle_generate_data() -> None:
             value = InputHelper.ask_number(
                 prompt,
                 min_value=1,
-                default=(
-                    10 if not selections["target_count"] else selections["target_count"]
-                ),
+                default=(10 if not selections["target_count"] else selections["target_count"]),
                 allow_back=True,
                 allow_quit_flow=True,
             )
@@ -880,20 +785,14 @@ def handle_generate_data() -> None:
             step += 1
 
         elif step == 6:  # Generate metadata
-            current_value = (
-                "yes"
-                if (selections["generate_metadata"] or defaults["generate_metadata"])
-                else "no"
-            )
+            current_value = "yes" if (selections["generate_metadata"] or defaults["generate_metadata"]) else "no"
             NavigationHelper.show_help(
                 "Generate Metadata",
                 "Whether to generate metadata output (JSON sidecar for CSV, metadata sheet for Excel).",
                 "yes (recommended), no",
             )
             prompt = f"[{step + 1}/{total_steps}] Generate metadata? (yes/no) (current: {current_value}, b back / q cancel):"
-            value = InputHelper.ask_yes_no(
-                prompt, default=True, allow_back=True, allow_quit_flow=True
-            )
+            value = InputHelper.ask_yes_no(prompt, default=True, allow_back=True, allow_quit_flow=True)
 
             if value is InputHelper.QUIT_TO_MENU:
                 DisplayHelper.print_warning("Cancelled. Returning to menu.")
@@ -913,9 +812,7 @@ def handle_generate_data() -> None:
                 "Test dataset, Production run, Research data",
             )
             prompt = f"[{step + 1}/{total_steps}] Description (optional, current: '{current_value}', b back / q cancel):"
-            value = InputHelper.get_input_with_backspace(
-                prompt, default=current_value, allow_empty=False
-            )
+            value = InputHelper.get_input_with_backspace(prompt, default=current_value, allow_empty=False)
 
             if NavigationHelper.should_quit_to_menu(value):
                 DisplayHelper.print_warning("Cancelled. Returning to menu.")
@@ -956,16 +853,12 @@ def handle_generate_data() -> None:
         )
 
         DisplayHelper.print_success(f"Data successfully exported to: {file_path}")
-        DisplayHelper.print_success(
-            f"All output files in: {exporter.config.output_directory}"
-        )
+        DisplayHelper.print_success(f"All output files in: {exporter.config.output_directory}")
         if selections["generate_metadata"]:
             if selections["file_output"] == "csv":
                 DisplayHelper.print_success(f"Metadata file: {exporter.metadata_path}")
             else:
-                DisplayHelper.print_success(
-                    f"Metadata sheet: {settings.get_value('excel_sheet_metadata')} (in {file_path.name})"
-                )
+                DisplayHelper.print_success(f"Metadata sheet: {settings.get_value('excel_sheet_metadata')} (in {file_path.name})")
         InputHelper.wait_for_continue()
 
     except ValueError as e:
@@ -995,17 +888,13 @@ def handle_view_facility_and_system() -> None:
     facility = facilities[0]
     facility_systems = [s for s in systems if s.facility_id == facility.id]
 
-    DisplayHelper.print_panel(
-        content=_format_facility(facility, settings), title="Simulated Facility Data"
-    )
+    DisplayHelper.print_panel(content=_format_facility(facility, settings), title="Simulated Facility Data")
 
     if not facility_systems:
         DisplayHelper.print_warning("This facility has no systems to display.")
         return
 
-    systems_table = Table(
-        title="Available Systems", show_header=True, header_style="bold cyan"
-    )
+    systems_table = Table(title="Available Systems", show_header=True, header_style="bold cyan")
     systems_table.add_column("#", style="cyan", width=4)
     systems_table.add_column("Title", style="green")
     systems_table.add_column("Key", style="yellow", justify="center")
@@ -1015,9 +904,7 @@ def handle_view_facility_and_system() -> None:
         system_type = _get_config_data().get_system_type(system.system_type_key or 0)
         title = system_type.title if system_type else f"System {idx}"
         wo_count = len(_work_orders_for_system(system, flat_work_orders))
-        systems_table.add_row(
-            str(idx), title, str(system.system_type_key), str(wo_count)
-        )
+        systems_table.add_row(str(idx), title, str(system.system_type_key), str(wo_count))
 
     DisplayHelper.print_table(systems_table)
 
@@ -1039,9 +926,7 @@ def handle_view_facility_and_system() -> None:
         InputHelper.wait_for_continue()
         return
 
-    DisplayHelper.print_panel(
-        content=_format_system(selected_system, settings), title="System Details"
-    )
+    DisplayHelper.print_panel(content=_format_system(selected_system, settings), title="System Details")
 
     related = _work_orders_for_system(selected_system, flat_work_orders)
     if not related:
@@ -1050,9 +935,7 @@ def handle_view_facility_and_system() -> None:
         return
 
     while True:
-        wo_table = Table(
-            title="Work Orders", show_header=True, header_style="bold cyan"
-        )
+        wo_table = Table(title="Work Orders", show_header=True, header_style="bold cyan")
         wo_table.add_column("#", style="cyan", width=4)
         wo_table.add_column("Status", style="green")
         wo_table.add_column("Priority", style="yellow")
@@ -1086,9 +969,7 @@ def handle_view_facility_and_system() -> None:
                 )
                 InputHelper.wait_for_continue()
             else:
-                DisplayHelper.print_error(
-                    f"Invalid selection. Please enter 1-{len(related)}."
-                )
+                DisplayHelper.print_error(f"Invalid selection. Please enter 1-{len(related)}.")
                 InputHelper.wait_for_continue()
         except ValueError:
             DisplayHelper.print_error("Invalid input. Please enter a number.")
@@ -1108,7 +989,6 @@ def handle_quick_generate() -> None:
     console.print("\n[bold cyan]Quick Generate - Summary Statistics[/bold cyan]\n")
     console.print("Generating sample data with default settings...\n")
 
-    settings = _get_settings()
     generator = DataGenerator()
 
     result = generator.generate_installation()
@@ -1118,9 +998,7 @@ def handle_quick_generate() -> None:
     work_orders = result.work_orders
 
     # Calculate statistics
-    facility_cis = [
-        f.condition_index for f in facilities if f.condition_index is not None
-    ]
+    facility_cis = [f.condition_index for f in facilities if f.condition_index is not None]
     facility_ages = [f.age_years for f in facilities if f.age_years is not None]
     system_cis = [s.condition_index for s in systems if s.condition_index is not None]
     system_ages = [s.age_years for s in systems if s.age_years is not None]
@@ -1141,12 +1019,8 @@ def handle_quick_generate() -> None:
     summary_table.add_row("Total Facilities", str(len(facilities)))
     summary_table.add_row("Total Systems", str(len(systems)))
     summary_table.add_row("Total Work Orders", str(len(work_orders)))
-    summary_table.add_row(
-        "Avg Systems per Facility", f"{len(systems) / max(1, len(facilities)):.1f}"
-    )
-    summary_table.add_row(
-        "Avg Work Orders per System", f"{len(work_orders) / max(1, len(systems)):.1f}"
-    )
+    summary_table.add_row("Avg Systems per Facility", f"{len(systems) / max(1, len(facilities)):.1f}")
+    summary_table.add_row("Avg Work Orders per System", f"{len(work_orders) / max(1, len(systems)):.1f}")
 
     DisplayHelper.print_table(summary_table)
 
@@ -1216,9 +1090,7 @@ def handle_quick_generate() -> None:
         priority_counts: dict[str, int] = {}
         for work_order in work_orders:
             status_key = work_order.status.value if work_order.status else "Unknown"
-            priority_key = (
-                work_order.priority.value if work_order.priority else "Unknown"
-            )
+            priority_key = work_order.priority.value if work_order.priority else "Unknown"
             status_counts[status_key] = status_counts.get(status_key, 0) + 1
             priority_counts[priority_key] = priority_counts.get(priority_key, 0) + 1
 
@@ -1234,13 +1106,9 @@ def handle_quick_generate() -> None:
 
         total_wo = len(work_orders)
         for value, count in sorted(status_counts.items(), key=lambda item: item[0]):
-            wo_table.add_row(
-                "Status", value, str(count), f"{(count / total_wo) * 100:.1f}%"
-            )
+            wo_table.add_row("Status", value, str(count), f"{(count / total_wo) * 100:.1f}%")
         for value, count in sorted(priority_counts.items(), key=lambda item: item[0]):
-            wo_table.add_row(
-                "Priority", value, str(count), f"{(count / total_wo) * 100:.1f}%"
-            )
+            wo_table.add_row("Priority", value, str(count), f"{(count / total_wo) * 100:.1f}%")
 
         DisplayHelper.print_table(wo_table)
 
@@ -1254,27 +1122,15 @@ def handle_quick_generate() -> None:
         critical = sum(1 for ci in facility_cis if ci < 25)
         total = len(facility_cis)
 
-        console.print(
-            f"  [green]Good (CI >= 70):[/green]     {good:3} ({good / total * 100:5.1f}%)"
-        )
-        console.print(
-            f"  [yellow]Fair (50-69):[/yellow]        {fair:3} ({fair / total * 100:5.1f}%)"
-        )
-        console.print(
-            f"  [orange3]Poor (25-49):[/orange3]        {poor:3} ({poor / total * 100:5.1f}%)"
-        )
-        console.print(
-            f"  [red]Critical (< 25):[/red]     {critical:3} ({critical / total * 100:5.1f}%)"
-        )
+        console.print(f"  [green]Good (CI >= 70):[/green]     {good:3} ({good / total * 100:5.1f}%)")
+        console.print(f"  [yellow]Fair (50-69):[/yellow]        {fair:3} ({fair / total * 100:5.1f}%)")
+        console.print(f"  [orange3]Poor (25-49):[/orange3]        {poor:3} ({poor / total * 100:5.1f}%)")
+        console.print(f"  [red]Critical (< 25):[/red]     {critical:3} ({critical / total * 100:5.1f}%)")
 
     console.print("\n[dim]Enter to generate again · b or q to return to menu[/dim]")
 
     choice = InputHelper.get_input_with_backspace("", allow_empty=True)
-    if (
-        choice is None
-        or NavigationHelper.should_quit_to_menu(choice)
-        or NavigationHelper.can_go_back(choice)
-    ):
+    if choice is None or NavigationHelper.should_quit_to_menu(choice) or NavigationHelper.can_go_back(choice):
         return
     else:
         # Generate again

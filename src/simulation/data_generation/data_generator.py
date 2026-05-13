@@ -15,9 +15,7 @@ class DataGenerator:
 
     def generate_installation(self) -> DataStore:
         """Generate a single installation hierarchy."""
-        installation, facilities, systems, work_orders = (
-            self._install_generator.generate()
-        )
+        installation, facilities, systems, work_orders = self._install_generator.generate()
         return DataStore.from_single_installation(
             installation=installation,
             facilities=facilities,

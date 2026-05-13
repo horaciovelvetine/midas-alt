@@ -100,9 +100,7 @@ class MenuHandler:
         # Calculate padding for bottom justification
         # Get terminal height, accounting for the panel border and prompt
         try:
-            terminal_height = (
-                console.height or 24
-            )  # Default to 24 if height unavailable
+            terminal_height = console.height or 24  # Default to 24 if height unavailable
             # Estimate menu height: menu lines + panel borders (2) + title (1) + prompt area (2)
             menu_height = len(menu_lines) + 5
             # Add padding to push content to bottom
@@ -132,7 +130,7 @@ class MenuHandler:
         return numeric + extra + ["q", "quit"]
 
     def get_default_choice(self) -> str:
-        """Default to the first listed option."""
+        """Return the default choice (the first listed option)."""
         return "1"
 
     def get_item_by_index(self, index: int) -> MenuItem | None:

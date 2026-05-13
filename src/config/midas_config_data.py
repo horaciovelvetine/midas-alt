@@ -49,44 +49,30 @@ class MidasConfigData(metaclass=SingletonMeta):
             return None
         return self.system_types.get(key)
 
-    def get_random_facility_type(
-        self, excluded_keys: list[int] | None = None
-    ) -> FacilityType | None:
+    def get_random_facility_type(self, excluded_keys: list[int] | None = None) -> FacilityType | None:
         """Get a random facility type, optionally excluding certain keys."""
         excluded = excluded_keys or []
-        available = [
-            ft for ft in self.facility_types.values() if ft.key not in excluded
-        ]
+        available = [ft for ft in self.facility_types.values() if ft.key not in excluded]
         return random.choice(available) if available else None
 
-    def get_random_system_type_for_facility(
-        self, facility_key: int
-    ) -> SystemType | None:
+    def get_random_system_type_for_facility(self, facility_key: int) -> SystemType | None:
         """Get a random system type that belongs to the given facility type."""
         system_types = self.get_system_types_for_facility(facility_key)
         return random.choice(system_types) if system_types else None
 
     def get_system_types_for_facility(self, facility_key: int) -> list[SystemType]:
         """Get all system types that belong to a facility type."""
-        return [
-            st for st in self.system_types.values() if facility_key in st.facility_keys
-        ]
+        return [st for st in self.system_types.values() if facility_key in st.facility_keys]
 
     def get_random_location(self) -> InstallationLocation | None:
         """Get a random location from loaded installation locations."""
-        return (
-            random.choice(self.installation_locations)
-            if self.installation_locations
-            else None
-        )
+        return random.choice(self.installation_locations) if self.installation_locations else None
 
     # ! ==========================================================================================>
     # ! DISTRIBUTION-DRIVEN SAMPLING
     # ! ==========================================================================================>
 
-    def sample_work_order_template(
-        self, system_title: str | None
-    ) -> WorkOrderText | None:
+    def sample_work_order_template(self, system_title: str | None) -> WorkOrderText | None:
         """Return a workbook ``Work Orders`` row matching ``system_title``.
 
         Lookup is tolerant of minor casing/whitespace and trailing-digit
@@ -103,9 +89,7 @@ class MidasConfigData(metaclass=SingletonMeta):
         if not self.work_order_text_cache:
             return None
 
-        rows = self._lookup_template_rows(
-            system_title, fallback_key=FALLBACK_KEY, normalize=normalize_system_title
-        )
+        rows = self._lookup_template_rows(system_title, fallback_key=FALLBACK_KEY, normalize=normalize_system_title)
         if not rows:
             return None
         return random.choice(rows)
@@ -131,16 +115,14 @@ class MidasConfigData(metaclass=SingletonMeta):
         return self.work_order_text_cache.get(fallback_key, [])
 
     def sample_work_order_text(self, system_type: str | None) -> WorkOrderText | None:
-        """Deprecated alias for :meth:`sample_work_order_template`."""
+        """Sample a work-order text template (deprecated alias for :meth:`sample_work_order_template`)."""
         return self.sample_work_order_template(system_type)
 
     def get_random_work_order_requesting_organization(self) -> str | None:
         """Return a requesting organization sampled from the configured distribution."""
         from src.config.midas_settings import MidasSettings
 
-        distribution: DistributionBase = MidasSettings().get_value(
-            "generated_work_order_requesting_organization_distribution"
-        )
+        distribution: DistributionBase = MidasSettings().get_value("generated_work_order_requesting_organization_distribution")
         sampled: Any = distribution.sample()
         text = str(sampled).strip() if sampled is not None else ""
         return text or None

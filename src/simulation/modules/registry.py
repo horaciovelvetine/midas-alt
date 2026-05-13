@@ -13,8 +13,8 @@ import importlib
 import inspect
 import logging
 import pkgutil
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from src.simulation.modules.base import SimulationModuleBase
 

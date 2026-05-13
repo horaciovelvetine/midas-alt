@@ -151,10 +151,7 @@ def create_work_order_text_summary_table(
     total_templates = sum(len(rows) for _, rows in groups)
 
     table = Table(
-        title=(
-            f"Loaded Work Order Templates: {total_templates} total"
-            f" across {len(groups)} system group(s)"
-        ),
+        title=(f"Loaded Work Order Templates: {total_templates} total across {len(groups)} system group(s)"),
         show_header=True,
         header_style="bold cyan",
         border_style="green",
@@ -257,9 +254,7 @@ def _format_facility_keys(facility_keys: tuple[int, ...]) -> str:
 
 def _create_parameter_table(rows: list[tuple[str, str]]) -> Table:
     """Create a two-column parameter table used for non-segment distributions."""
-    table = Table(
-        show_header=True, header_style="bold yellow", box=None, padding=(0, 2)
-    )
+    table = Table(show_header=True, header_style="bold yellow", box=None, padding=(0, 2))
     table.add_column("Parameter", style="cyan", width=25)
     table.add_column("Value", style="white", justify="right")
 
@@ -331,9 +326,7 @@ def _create_distribution_table(
     prefix: str = "",
 ) -> Table:
     """Two-column percent/value table; shows *Not configured* when ``distribution`` is None."""
-    table = Table(
-        show_header=True, header_style="bold yellow", box=None, padding=(0, 2)
-    )
+    table = Table(show_header=True, header_style="bold yellow", box=None, padding=(0, 2))
     table.add_column("Percentage", style="magenta", justify="right", width=12)
     table.add_column(value_column_name, style="white")
 

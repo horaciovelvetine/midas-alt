@@ -1,26 +1,21 @@
 import logging
+
 import pandas as pd
 from pandas import ExcelFile
 
+from src.config.midas_settings import MidasSettings
 from src.io.loaders.midas_config_data_loader import (
     ConfigDataLoadResult,
-    MidasConfigDataLoader,
 )
 from src.models import SystemType
-from src.config.midas_settings import MidasSettings
 
 logger = logging.getLogger(__name__)
 
 
-def load_system_types_config_data(
-    excel_file: ExcelFile, result: ConfigDataLoadResult
-) -> dict[int, SystemType]:
-    """Load SystemType instances from the ``Systems`` config data excel sheet"""
-
+def load_system_types_config_data(excel_file: ExcelFile, result: ConfigDataLoadResult) -> dict[int, SystemType]:
+    """Load ``SystemType`` instances from the ``Systems`` config data excel sheet."""
     if "Systems" not in excel_file.sheet_names:
-        result.add_warning(
-            f"Unable to find 'Systems' sheet in the {MidasSettings.DEFAULT_CONFIG_DATA_FILENAME} excel file."
-        )
+        result.add_warning(f"Unable to find 'Systems' sheet in the {MidasSettings.DEFAULT_CONFIG_DATA_FILENAME} excel file.")
         return {}
 
     df = pd.read_excel(excel_file, sheet_name="Systems")
@@ -49,9 +44,7 @@ def load_system_types_config_data(
             if pd.isna(key) or key == 0:
                 continue
 
-            facility_keys_raw = (
-                row.get(facility_keys_column, "") if facility_keys_column else ""
-            )
+            facility_keys_raw = row.get(facility_keys_column, "") if facility_keys_column else ""
             if pd.isna(facility_keys_raw):
                 facility_keys: tuple[int, ...] = ()
             elif isinstance(facility_keys_raw, (int, float)):
@@ -83,9 +76,7 @@ def load_system_types_config_data(
 
 def find_column(columns: list[str], candidates: list[str]) -> str | None:
     """Find a matching column name from a list of candidates."""
-    normalized_columns = {
-        col.lower().replace(" ", "").replace("_", ""): col for col in columns
-    }
+    normalized_columns = {col.lower().replace(" ", "").replace("_", ""): col for col in columns}
     for candidate in candidates:
         normalized_candidate = candidate.lower().replace(" ", "").replace("_", "")
         if normalized_candidate in normalized_columns:

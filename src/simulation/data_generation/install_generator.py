@@ -37,9 +37,7 @@ class InstallGenerator(DataGeneratorBase):
         work_orders: list[WorkOrder] = []
 
         for _ in range(max(0, count)):
-            install, install_facilities, install_systems, install_work_orders = (
-                self.generate()
-            )
+            install, install_facilities, install_systems, install_work_orders = self.generate()
             installations.append(install)
             facilities.extend(install_facilities)
             systems.extend(install_systems)

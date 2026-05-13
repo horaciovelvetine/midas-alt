@@ -15,6 +15,7 @@ def maybe_prompt_save() -> bool:
 
     Returns:
         ``True`` if the state was written to disk during this call.
+
     """
     settings = MidasSettings()
     if not settings.is_dirty():
@@ -36,6 +37,7 @@ def force_save_on_exit() -> bool:
 
     Returns:
         ``True`` if the state was written to disk.
+
     """
     if not MidasSettings().is_dirty():
         return False
@@ -51,7 +53,5 @@ def _save_and_notify(silent: bool = False) -> bool:
         logger.exception("Failed to write MidasSettings state")
         return False
     if not silent:
-        DisplayHelper.print_success(
-            f"Saved current settings to: {target}", title="Settings"
-        )
+        DisplayHelper.print_success(f"Saved current settings to: {target}", title="Settings")
     return True

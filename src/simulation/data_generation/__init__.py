@@ -1,4 +1,4 @@
-"""Provide all named exports for generating mock datasets for use in the MIDAS application"""
+"""Public exports for the MIDAS mock-dataset generation pipeline."""
 
 from .data_generator import DataGenerator
 

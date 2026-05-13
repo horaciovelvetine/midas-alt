@@ -10,8 +10,9 @@ from __future__ import annotations
 import json
 import logging
 import random
+from collections.abc import Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import TYPE_CHECKING, Any
 
 from src.config._singleton import SingletonMeta
 from src.config.setting_state import (
@@ -52,14 +53,8 @@ class MidasSettings(metaclass=SingletonMeta):
 
     DEFAULT_CONFIG_DATA_FILENAME = "midas_config_data.xlsx"
     DEFAULT_STATE_FILE_NAME: str = "midas_settings.json"
-    DEFAULT_OUTPUT_DIRECTORY: Path = (
-        Path(__file__).resolve().parent.parent.parent / "output"
-    )
-    DEFAULT_CONFIG_DATA_PATH: Path = (
-        Path(__file__).resolve().parent.parent.parent
-        / "docs"
-        / DEFAULT_CONFIG_DATA_FILENAME
-    )
+    DEFAULT_OUTPUT_DIRECTORY: Path = Path(__file__).resolve().parent.parent.parent / "output"
+    DEFAULT_CONFIG_DATA_PATH: Path = Path(__file__).resolve().parent.parent.parent / "docs" / DEFAULT_CONFIG_DATA_FILENAME
 
     # ! ==========================================================================================>
     # ! INITIALIZATION
@@ -233,28 +228,23 @@ class MidasSettings(metaclass=SingletonMeta):
         )
 
         # --- Data Generation Distributions ---
-        self._states["generated_condition_index_distribution"] = (
-            DistributionSettingState(
-                label="Generated Condition Index Data Distribution",
-                description=(
-                    "The probability distribution used to randomly select a starting condition "
-                    "index value for a generated piece of infrastructure."
-                ),
-                value=WeightedProbabilityDistribution(
-                    [
-                        WeightedProbabilitySegment(7, "1-50"),
-                        WeightedProbabilitySegment(88, "50-85"),
-                        WeightedProbabilitySegment(5, "85-100"),
-                    ]
-                ),
-            )
+        self._states["generated_condition_index_distribution"] = DistributionSettingState(
+            label="Generated Condition Index Data Distribution",
+            description=(
+                "The probability distribution used to randomly select a starting condition "
+                "index value for a generated piece of infrastructure."
+            ),
+            value=WeightedProbabilityDistribution(
+                [
+                    WeightedProbabilitySegment(7, "1-50"),
+                    WeightedProbabilitySegment(88, "50-85"),
+                    WeightedProbabilitySegment(5, "85-100"),
+                ]
+            ),
         )
         self._states["generated_age_distribution"] = DistributionSettingState(
             label="Generated Age Data Distribution",
-            description=(
-                "The probability distribution used to randomly select an age for a generated "
-                "piece of infrastructure."
-            ),
+            description=("The probability distribution used to randomly select an age for a generated piece of infrastructure."),
             value=WeightedProbabilityDistribution(
                 [
                     WeightedProbabilitySegment(50, "20-40"),
@@ -264,86 +254,74 @@ class MidasSettings(metaclass=SingletonMeta):
                 ]
             ),
         )
-        self._states["generated_resiliency_grade_distribution"] = (
-            DistributionSettingState(
-                label="Generated Resiliency Grade Data Distribution",
-                description=(
-                    "The probability distribution used to randomly select a UFC Grade for a "
-                    "generated piece of infrastructure."
-                ),
-                value=WeightedProbabilityDistribution(
-                    [
-                        WeightedProbabilitySegment(52, "1"),
-                        WeightedProbabilitySegment(32, "2"),
-                        WeightedProbabilitySegment(12, "3"),
-                        WeightedProbabilitySegment(4, "4"),
-                    ]
-                ),
-            )
+        self._states["generated_resiliency_grade_distribution"] = DistributionSettingState(
+            label="Generated Resiliency Grade Data Distribution",
+            description=(
+                "The probability distribution used to randomly select a UFC Grade for a generated piece of infrastructure."
+            ),
+            value=WeightedProbabilityDistribution(
+                [
+                    WeightedProbabilitySegment(52, "1"),
+                    WeightedProbabilitySegment(32, "2"),
+                    WeightedProbabilitySegment(12, "3"),
+                    WeightedProbabilitySegment(4, "4"),
+                ]
+            ),
         )
-        self._states["generated_work_order_count_distribution"] = (
-            DistributionSettingState(
-                label="Generated Work Order Count Distribution",
-                description=(
-                    "Probability distribution used to determine the number of Work Order instances "
-                    "to create for a randomly generated System."
-                ),
-                value=BathtubCurveDistribution(),
-            )
+        self._states["generated_work_order_count_distribution"] = DistributionSettingState(
+            label="Generated Work Order Count Distribution",
+            description=(
+                "Probability distribution used to determine the number of Work Order instances "
+                "to create for a randomly generated System."
+            ),
+            value=BathtubCurveDistribution(),
         )
-        self._states["generated_work_order_status_distribution"] = (
-            DistributionSettingState(
-                label="Generated Work Order Status Distribution",
-                description=(
-                    "Probability distribution used to determine the status of randomly generated "
-                    "Work Order instances on creation."
-                ),
-                value=WeightedProbabilityDistribution(
-                    [
-                        WeightedProbabilitySegment(8, "Submitted"),
-                        WeightedProbabilitySegment(14, "Approved"),
-                        WeightedProbabilitySegment(26, "In Progress"),
-                        WeightedProbabilitySegment(52, "Completed"),
-                    ]
-                ),
-            )
+        self._states["generated_work_order_status_distribution"] = DistributionSettingState(
+            label="Generated Work Order Status Distribution",
+            description=(
+                "Probability distribution used to determine the status of randomly generated Work Order instances on creation."
+            ),
+            value=WeightedProbabilityDistribution(
+                [
+                    WeightedProbabilitySegment(8, "Submitted"),
+                    WeightedProbabilitySegment(14, "Approved"),
+                    WeightedProbabilitySegment(26, "In Progress"),
+                    WeightedProbabilitySegment(52, "Completed"),
+                ]
+            ),
         )
-        self._states["generated_work_order_priority_distribution"] = (
-            DistributionSettingState(
-                label="Generated Work Order Priority Distribution",
-                description=(
-                    "Reference probability distribution for work-order work category / priority. "
-                    "Generation now copies the category directly from the sampled workbook template; "
-                    "this setting is retained for reporting and future re-weighting."
-                ),
-                value=WeightedProbabilityDistribution(
-                    [
-                        WeightedProbabilitySegment(7, "Emergency"),
-                        WeightedProbabilitySegment(18, "Urgent"),
-                        WeightedProbabilitySegment(50, "Routine"),
-                        WeightedProbabilitySegment(25, "Preventive Maintenance"),
-                    ]
-                ),
-            )
+        self._states["generated_work_order_priority_distribution"] = DistributionSettingState(
+            label="Generated Work Order Priority Distribution",
+            description=(
+                "Reference probability distribution for work-order work category / priority. "
+                "Generation now copies the category directly from the sampled workbook template; "
+                "this setting is retained for reporting and future re-weighting."
+            ),
+            value=WeightedProbabilityDistribution(
+                [
+                    WeightedProbabilitySegment(7, "Emergency"),
+                    WeightedProbabilitySegment(18, "Urgent"),
+                    WeightedProbabilitySegment(50, "Routine"),
+                    WeightedProbabilitySegment(25, "Preventive Maintenance"),
+                ]
+            ),
         )
-        self._states["generated_work_order_requesting_organization_distribution"] = (
-            DistributionSettingState(
-                label="Generated Work Order Requesting Organization Distribution",
-                description=(
-                    "Probability distribution used to determine the requesting organization of "
-                    "randomly generated Work Order instances on creation."
-                ),
-                value=WeightedProbabilityDistribution(
-                    [
-                        WeightedProbabilitySegment(1, "J1"),
-                        WeightedProbabilitySegment(1, "J2"),
-                        WeightedProbabilitySegment(1, "J3"),
-                        WeightedProbabilitySegment(1, "J4"),
-                        WeightedProbabilitySegment(1, "J5"),
-                        WeightedProbabilitySegment(1, "J6"),
-                    ]
-                ),
-            )
+        self._states["generated_work_order_requesting_organization_distribution"] = DistributionSettingState(
+            label="Generated Work Order Requesting Organization Distribution",
+            description=(
+                "Probability distribution used to determine the requesting organization of "
+                "randomly generated Work Order instances on creation."
+            ),
+            value=WeightedProbabilityDistribution(
+                [
+                    WeightedProbabilitySegment(1, "J1"),
+                    WeightedProbabilitySegment(1, "J2"),
+                    WeightedProbabilitySegment(1, "J3"),
+                    WeightedProbabilitySegment(1, "J4"),
+                    WeightedProbabilitySegment(1, "J5"),
+                    WeightedProbabilitySegment(1, "J6"),
+                ]
+            ),
         )
 
         # --- Simulation Settings ---
@@ -373,9 +351,7 @@ class MidasSettings(metaclass=SingletonMeta):
         )
         self._states["excel_sheet_work_orders"] = StringSettingState(
             label="Excel Work Orders Sheet Name",
-            description=(
-                "Sheet name used for the work-orders table in normalized .xlsx exports."
-            ),
+            description=("Sheet name used for the work-orders table in normalized .xlsx exports."),
             value="Work Orders",
         )
         self._states["metadata_file_suffix"] = StringSettingState(
@@ -401,6 +377,7 @@ class MidasSettings(metaclass=SingletonMeta):
 
         Raises:
             KeyError: If ``name`` is not a known setting.
+
         """
         try:
             return self._states[name]
@@ -420,6 +397,7 @@ class MidasSettings(metaclass=SingletonMeta):
         Raises:
             KeyError: If ``name`` is not a known setting.
             ValueError: If the value is out of declared bounds or invalid shape.
+
         """
         state = self.get_state(name)
         if isinstance(state, FloatSettingState):
@@ -432,9 +410,7 @@ class MidasSettings(metaclass=SingletonMeta):
             state.value = coerced_int
         elif isinstance(state, RangeSettingState):
             if not isinstance(value, (list, tuple)) or len(value) != 2:
-                raise ValueError(
-                    f"Range setting {name!r} requires a (min, max) pair (got {value!r})"
-                )
+                raise ValueError(f"Range setting {name!r} requires a (min, max) pair (got {value!r})")
             low, high = int(value[0]), int(value[1])
             _check_bounds(name, low, state.min, state.max)
             _check_bounds(name, high, state.min, state.max)
@@ -442,16 +418,11 @@ class MidasSettings(metaclass=SingletonMeta):
         elif isinstance(state, StringSettingState):
             text = str(value)
             if state.choices is not None and text not in state.choices:
-                raise ValueError(
-                    f"String setting {name!r} must be one of {list(state.choices)} (got {text!r})"
-                )
+                raise ValueError(f"String setting {name!r} must be one of {list(state.choices)} (got {text!r})")
             state.value = text
         elif isinstance(state, BooleanMappingSettingState):
             if not isinstance(value, dict):
-                raise ValueError(
-                    f"Boolean mapping setting {name!r} requires a dict "
-                    f"(got {type(value).__name__})"
-                )
+                raise ValueError(f"Boolean mapping setting {name!r} requires a dict (got {type(value).__name__})")
             if state.keys is not None:
                 expected = set(state.keys)
                 provided = set(value.keys())
@@ -459,8 +430,7 @@ class MidasSettings(metaclass=SingletonMeta):
                     missing = sorted(expected - provided)
                     extra = sorted(provided - expected)
                     raise ValueError(
-                        f"Boolean mapping setting {name!r} requires keys "
-                        f"{sorted(expected)} (missing={missing}, unexpected={extra})"
+                        f"Boolean mapping setting {name!r} requires keys {sorted(expected)} (missing={missing}, unexpected={extra})"
                     )
                 ordered_keys = state.keys
             else:
@@ -468,9 +438,7 @@ class MidasSettings(metaclass=SingletonMeta):
             state.value = {key: bool(value[key]) for key in ordered_keys}
         elif isinstance(state, MappingSettingState):
             if not isinstance(value, dict):
-                raise ValueError(
-                    f"Mapping setting {name!r} requires a dict (got {type(value).__name__})"
-                )
+                raise ValueError(f"Mapping setting {name!r} requires a dict (got {type(value).__name__})")
             if state.keys is not None:
                 expected = set(state.keys)
                 provided = set(value.keys())
@@ -478,8 +446,7 @@ class MidasSettings(metaclass=SingletonMeta):
                     missing = sorted(expected - provided)
                     extra = sorted(provided - expected)
                     raise ValueError(
-                        f"Mapping setting {name!r} requires keys {sorted(expected)} "
-                        f"(missing={missing}, unexpected={extra})"
+                        f"Mapping setting {name!r} requires keys {sorted(expected)} (missing={missing}, unexpected={extra})"
                     )
                 ordered_keys: tuple[str, ...] = state.keys
             else:
@@ -493,19 +460,11 @@ class MidasSettings(metaclass=SingletonMeta):
         elif isinstance(state, DistributionSettingState):
             # ``DistributionBase`` is a non-runtime Protocol, so duck-type the contract
             # callers actually rely on (``sample`` plus ``to_dict`` for round-tripping).
-            if not (
-                callable(getattr(value, "sample", None))
-                and callable(getattr(value, "to_dict", None))
-            ):
-                raise ValueError(
-                    f"Distribution setting {name!r} requires a DistributionBase instance "
-                    f"(got {type(value).__name__})"
-                )
+            if not (callable(getattr(value, "sample", None)) and callable(getattr(value, "to_dict", None))):
+                raise ValueError(f"Distribution setting {name!r} requires a DistributionBase instance (got {type(value).__name__})")
             state.value = value
         else:
-            raise ValueError(
-                f"Unsupported setting state type for {name!r}: {type(state).__name__}"
-            )
+            raise ValueError(f"Unsupported setting state type for {name!r}: {type(state).__name__}")
         self._dirty = True
 
     def is_dirty(self) -> bool:
@@ -529,7 +488,7 @@ class MidasSettings(metaclass=SingletonMeta):
     # ! ==========================================================================================>
 
     @property
-    def config_data(self) -> "MidasConfigData":
+    def config_data(self) -> MidasConfigData:
         """Return the reference-data singleton (lazy import to avoid cycles)."""
         from src.config.midas_config_data import MidasConfigData
 
@@ -590,9 +549,7 @@ class MidasSettings(metaclass=SingletonMeta):
 
         state = self.get_state("enabled_simulation_modules")
         if not isinstance(state, BooleanMappingSettingState):
-            raise TypeError(
-                "enabled_simulation_modules must be a BooleanMappingSettingState"
-            )
+            raise TypeError("enabled_simulation_modules must be a BooleanMappingSettingState")
 
         specs = get_module_specs()
         ordered_keys = tuple(spec.key for spec in specs)
@@ -622,14 +579,14 @@ class MidasSettings(metaclass=SingletonMeta):
             return []
         return [key for key, enabled in state.value.items() if enabled]
 
-    def build_enabled_simulation_modules(self) -> list["SimulationModuleBase"]:
+    def build_enabled_simulation_modules(self) -> list[SimulationModuleBase]:
         """Instantiate the simulation modules currently enabled in settings."""
         from src.simulation.modules.registry import get_module_specs
 
         enabled_keys = set(self.iter_enabled_simulation_module_keys())
         if not enabled_keys:
             return []
-        instances: list["SimulationModuleBase"] = []
+        instances: list[SimulationModuleBase] = []
         for spec in get_module_specs():
             if spec.key in enabled_keys:
                 instances.append(spec.factory())
@@ -641,7 +598,7 @@ class MidasSettings(metaclass=SingletonMeta):
 
     @classmethod
     def default_state_path(cls) -> Path:
-        """Default path used when ``load_state`` / ``save_state`` get no argument."""
+        """Return the default path used when ``load_state`` / ``save_state`` get no argument."""
         return cls.DEFAULT_OUTPUT_DIRECTORY / cls.DEFAULT_STATE_FILE_NAME
 
     def load_state(self, path: str | Path | None = None) -> bool:
@@ -655,6 +612,7 @@ class MidasSettings(metaclass=SingletonMeta):
 
         Raises:
             ValueError: If the file is malformed or references an unknown setting type.
+
         """
         target = Path(path) if path is not None else self.default_state_path()
         if not target.exists():
@@ -663,9 +621,7 @@ class MidasSettings(metaclass=SingletonMeta):
 
         raw = json.loads(target.read_text(encoding="utf-8"))
         if not isinstance(raw, dict):
-            raise ValueError(
-                f"MidasSettings state file must contain a JSON object (got {type(raw).__name__})"
-            )
+            raise ValueError(f"MidasSettings state file must contain a JSON object (got {type(raw).__name__})")
 
         applied = 0
         for name, payload in raw.items():
@@ -676,17 +632,13 @@ class MidasSettings(metaclass=SingletonMeta):
                 )
                 continue
             if not isinstance(payload, dict):
-                logger.warning(
-                    "MidasSettings state for %r must be an object; ignoring", name
-                )
+                logger.warning("MidasSettings state for %r must be an object; ignoring", name)
                 continue
             try:
                 self._states[name] = SettingState.deserialize(payload)
                 applied += 1
             except ValueError as exc:
-                logger.warning(
-                    "Failed to deserialize MidasSettings entry %r: %s", name, exc
-                )
+                logger.warning("Failed to deserialize MidasSettings entry %r: %s", name, exc)
 
         logger.info("Applied %s setting overrides from %s", applied, target)
         self._dirty = False
@@ -700,6 +652,7 @@ class MidasSettings(metaclass=SingletonMeta):
 
         Returns:
             The path that was written.
+
         """
         target = Path(path) if path is not None else self.default_state_path()
         target.parent.mkdir(parents=True, exist_ok=True)

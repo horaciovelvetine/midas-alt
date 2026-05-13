@@ -3,12 +3,12 @@
 from typing import Any
 
 from src.models.distributions import (
-    DistributionBase,
-    WeightedProbabilitySegment,
-    WeightedProbabilityDistribution,
-    NormalCurveDistribution,
     BathtubCurveDistribution,
+    DistributionBase,
+    NormalCurveDistribution,
     PiecewiseCurveDistribution,
+    WeightedProbabilityDistribution,
+    WeightedProbabilitySegment,
 )
 
 
@@ -33,14 +33,12 @@ def create_distribution_from_spec(spec: dict[str, Any]) -> DistributionBase:
 
     Raises:
         ValueError: If ``type`` is missing or not supported.
+
     """
     dist_type = str(spec.get("type", "")).strip().lower()
     if dist_type == "segments":
         raw_segments = spec.get("segments", [])
-        segments = [
-            WeightedProbabilitySegment(int(item["percentage"]), str(item["value"]))
-            for item in raw_segments
-        ]
+        segments = [WeightedProbabilitySegment(int(item["percentage"]), str(item["value"])) for item in raw_segments]
         return WeightedProbabilityDistribution(segments)
 
     # Default values for these distributions...

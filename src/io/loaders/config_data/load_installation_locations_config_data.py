@@ -1,4 +1,5 @@
 import logging
+
 import pandas as pd
 from pandas import ExcelFile
 
@@ -8,11 +9,8 @@ from src.models import InstallationLocation
 logger = logging.getLogger(__name__)
 
 
-def load_install_locations_config_data(
-    excel_file: ExcelFile, result: ConfigDataLoadResult
-) -> list[InstallationLocation]:
+def load_install_locations_config_data(excel_file: ExcelFile, result: ConfigDataLoadResult) -> list[InstallationLocation]:
     """Load installation locations from the workbook.
-
 
     Accepts ``Installations`` (preferred, new schema) or the legacy
     ``Installation Locations`` sheet name.
@@ -45,11 +43,12 @@ def load_install_locations_config_data(
                 )
             )
         except (TypeError, ValueError) as exc:
-            logger.warning(
-                "Installation location parse error: invalid row data (%s)", exc
-            )
+            logger.warning("Installation location parse error: invalid row data (%s)", exc)
 
     logger.info(
-        f"Loaded {len(locations)} installation locations from {sheet_name} in the {MidasSettings.DEFAULT_CONFIG_DATA_FILENAME} excel file."
+        "Loaded %d installation locations from %s in the %s excel file.",
+        len(locations),
+        sheet_name,
+        MidasSettings.DEFAULT_CONFIG_DATA_FILENAME,
     )
     return locations

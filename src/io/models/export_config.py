@@ -23,9 +23,7 @@ class ExportConfig:
             if isinstance(self.output_format, str):
                 self.output_format = OutputFileType(self.output_format.lower())
             else:
-                self.output_format = OutputFileType(
-                    str(self.output_format.value).lower()
-                )
+                self.output_format = OutputFileType(str(self.output_format.value).lower())
 
         if not isinstance(self.layout, OutputLayoutSchema):
             if isinstance(self.layout, str):

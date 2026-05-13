@@ -31,9 +31,7 @@ class DependencyPosition:
         """Validate and normalize."""
         self.vertical_position = self.vertical_position.upper()
         if self.vertical_position not in VERTICAL_POSITIONS:
-            raise ValueError(
-                f"vertical_position must be a single letter A-Z, got '{self.vertical_position}'"
-            )
+            raise ValueError(f"vertical_position must be a single letter A-Z, got '{self.vertical_position}'")
         if any(g < 1 or g > 9 for g in self.group_ids):
             raise ValueError(f"group_ids must be integers 1-9, got {self.group_ids}")
 

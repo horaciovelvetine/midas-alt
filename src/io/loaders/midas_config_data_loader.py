@@ -5,10 +5,10 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+
 from pandas import ExcelFile
 
 from src.config.midas_config_data import MidasConfigData
-
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,7 @@ class MidasConfigDataLoader:
 
         Raises:
             ConfigWorkbookLoadError: If the workbook cannot be opened or located.
+
         """
         from src.config.midas_settings import MidasSettings
         from src.io.loaders.config_data import (
@@ -58,24 +59,14 @@ class MidasConfigDataLoader:
             load_work_order_text_config_data,
         )
 
-        path = (
-            Path(
-                workbook_path
-                if workbook_path is not None
-                else MidasSettings.DEFAULT_CONFIG_DATA_PATH
-            )
-            .expanduser()
-            .resolve()
-        )
+        path = Path(workbook_path if workbook_path is not None else MidasSettings.DEFAULT_CONFIG_DATA_PATH).expanduser().resolve()
         if not path.exists():
             raise ConfigWorkbookLoadError(f"Configuration file not found: {path}")
 
         try:
             excel_file = ExcelFile(path)
         except (OSError, ValueError) as exc:
-            raise ConfigWorkbookLoadError(
-                f"Configuration load error: failed to open workbook at '{path}' ({exc})"
-            ) from exc
+            raise ConfigWorkbookLoadError(f"Configuration load error: failed to open workbook at '{path}' ({exc})") from exc
 
         result = ConfigDataLoadResult()
 

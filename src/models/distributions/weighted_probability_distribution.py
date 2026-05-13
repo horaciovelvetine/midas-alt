@@ -3,8 +3,8 @@
 import random
 
 from .distribution_base import DistributionBase
-from .weighted_probability_segment import WeightedProbabilitySegment
 from .distribution_context import DistributionContext
+from .weighted_probability_segment import WeightedProbabilitySegment
 
 
 class WeightedProbabilityDistribution(DistributionBase):
@@ -13,9 +13,7 @@ class WeightedProbabilityDistribution(DistributionBase):
     def __init__(self, segments: list[WeightedProbabilitySegment]) -> None:
         """Initialize with one or more weighted segments."""
         if not segments:
-            raise ValueError(
-                "WeightedProbabilityDistribution must have at least one segment"
-            )
+            raise ValueError("WeightedProbabilityDistribution must have at least one segment")
         self._segments = segments
 
     def get_total_percentage(self) -> int:
@@ -63,10 +61,7 @@ class WeightedProbabilityDistribution(DistributionBase):
     @classmethod
     def from_dict(cls, data: dict) -> "WeightedProbabilityDistribution":
         """Reconstruct from a dict produced by :meth:`to_dict`."""
-        segments = [
-            WeightedProbabilitySegment(seg["percentage"], seg["value"])
-            for seg in data["segments"]
-        ]
+        segments = [WeightedProbabilitySegment(seg["percentage"], seg["value"]) for seg in data["segments"]]
         return cls(segments)
 
     def __str__(self) -> str:

@@ -11,7 +11,6 @@ from .system_type import SystemType
 from .work_order import WorkOrder
 from .work_order_text import WorkOrderText
 
-
 __all__ = [
     "DataStore",
     "DependencyPosition",

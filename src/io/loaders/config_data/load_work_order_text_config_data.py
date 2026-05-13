@@ -46,14 +46,11 @@ def normalize_system_title(value: Any) -> str:
     return _NON_ALNUM_RE.sub("", text)
 
 
-def load_work_order_text_config_data(
-    excel_file: ExcelFile, result: ConfigDataLoadResult
-) -> dict[str, list[WorkOrderText]]:
+def load_work_order_text_config_data(excel_file: ExcelFile, result: ConfigDataLoadResult) -> dict[str, list[WorkOrderText]]:
     """Load work-order templates grouped by normalized system title."""
     if _SHEET_NAME not in excel_file.sheet_names:
         result.add_warning(
-            f"Unable to find the '{_SHEET_NAME}' sheet in the "
-            f"{MidasSettings.DEFAULT_CONFIG_DATA_FILENAME} excel file."
+            f"Unable to find the '{_SHEET_NAME}' sheet in the {MidasSettings.DEFAULT_CONFIG_DATA_FILENAME} excel file."
         )
         return {}
 
@@ -70,10 +67,7 @@ def load_work_order_text_config_data(
 
     missing_columns = [name for name in _REQUIRED_COLUMNS if name not in df.columns]
     if missing_columns:
-        result.add_warning(
-            f"'{_SHEET_NAME}' sheet is missing required column(s): "
-            f"{', '.join(missing_columns)}."
-        )
+        result.add_warning(f"'{_SHEET_NAME}' sheet is missing required column(s): {', '.join(missing_columns)}.")
         return {}
 
     cache: dict[str, list[WorkOrderText]] = {}
@@ -96,9 +90,7 @@ def load_work_order_text_config_data(
         cache[FALLBACK_KEY] = fallback
 
     if skipped:
-        logger.info(
-            "Skipped %s '%s' row(s) missing required values", skipped, _SHEET_NAME
-        )
+        logger.info("Skipped %s '%s' row(s) missing required values", skipped, _SHEET_NAME)
     logger.info(
         "Loaded %s work-order template(s) across %s system group(s) from '%s'",
         len(fallback),

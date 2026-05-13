@@ -1,8 +1,9 @@
 """Bell-shaped event rate over normalized age ratio."""
 
 import math
-from .event_rate_distribution import EventRateDistribution
+
 from .distribution_context import DistributionContext
+from .event_rate_distribution import EventRateDistribution
 
 
 class NormalCurveDistribution(EventRateDistribution):
